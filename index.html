@@ -550,6 +550,8 @@
     </div>
 </div>
 
+<datalist id="station-suggestions"></datalist>
+
 <div id="empty-state">
     <div class="ic">⏳</div>
     <h2>جارٍ تحميل بيانات كل المحافظات...</h2>
@@ -627,7 +629,7 @@
 
             <div class="risk-summary" id="tx-summary"></div>
             <div class="risk-filters">
-                <input type="text" id="tx-search" placeholder="🔍 بحث بالمحطة أو المنطقة أو المراقبة..." oninput="setTxSearch(this.value)">
+                <input type="text" id="tx-search" list="station-suggestions" placeholder="🔍 بحث برقم المحطة (S/S)..." oninput="setTxSearch(this.value)">
             </div>
 
             <div class="grid-2">
@@ -662,7 +664,7 @@
 
             <div class="risk-summary" id="cables-summary"></div>
             <div class="risk-filters">
-                <input type="text" id="cables-search" placeholder="🔍 بحث بالمحطة أو المنطقة أو المراقبة..." oninput="setCablesSearch(this.value)">
+                <input type="text" id="cables-search" list="station-suggestions" placeholder="🔍 بحث برقم المحطة (S/S)..." oninput="setCablesSearch(this.value)">
             </div>
 
             <!-- Cable / feeder load map (per-cable visibility) -->
@@ -707,7 +709,7 @@
                 </div>
                 <div class="risk-summary" id="risk-summary"></div>
                 <div class="risk-filters">
-                    <input type="text" id="risk-search" placeholder="🔍 بحث بالمحطة أو المنطقة أو المراقبة..." oninput="setRiskSearch(this.value)">
+                    <input type="text" id="risk-search" list="station-suggestions" placeholder="🔍 بحث برقم المحطة (S/S)..." oninput="setRiskSearch(this.value)">
                     <select id="risk-severity-filter" onchange="setRiskSeverity(this.value)">
                         <option value="__all__">كل درجات الخطورة</option>
                         <option value="crit">حرج فقط</option>
@@ -1659,6 +1661,7 @@ function processWorkbookData(sheetsData){
 
     globalTx = transformers;
     resetTablePages();
+    renderSearchSuggestions();
     document.getElementById('empty-state').style.display = transformers.length ? 'none' : 'block';
     document.getElementById('dashboard').style.display = transformers.length ? 'block' : 'none';
     document.getElementById('report-toggle-btn').style.display = transformers.length ? 'inline-flex' : 'none';
@@ -1800,7 +1803,7 @@ function applyRiskFilters(risks){
     return risks.filter(r=>{
         if(riskState.severity!=='__all__' && r.severity!==riskState.severity) return false;
         if(riskState.type!=='__all__' && r.type!==riskState.type) return false;
-        if(q && !(String(r.ss).includes(q) || r.area.includes(q) || r.office.includes(q) || r.tName.includes(q))) return false;
+        if(q && !(String(r.ss).includes(q) || r.tName.includes(q))) return false;
         return true;
     });
 }
@@ -2172,7 +2175,9 @@ function renderShiftTable(txs){
 ========================================================= */
 const REG_PAGE_SIZE = 15;
 function regMatches(t, q){
-    return String(t.ssNum).includes(q) || t.area.includes(q) || t.office.includes(q) || t.tName.includes(q);
+    // Office/area are already filterable via the dropdowns up top — search here
+    // targets what those can't: a specific station number or transformer.
+    return String(t.ssNum).includes(q) || t.tName.includes(q);
 }
 function renderSimplePagination(elId, total, page, gotoFnName){
     const el = document.getElementById(elId);
@@ -2186,6 +2191,13 @@ function renderSimplePagination(elId, total, page, gotoFnName){
 }
 function resetTablePages(){
     overloadPage = 1; neutralPage = 1; highFeedersPage = 1; cableMapPage = 1;
+}
+function renderSearchSuggestions(){
+    const dl = document.getElementById('station-suggestions');
+    if(!dl) return;
+    const stations = new Set();
+    globalTx.forEach(t=> stations.add(String(t.ssNum)));
+    dl.innerHTML = [...stations].sort().map(s=>`<option value="${s}">`).join('');
 }
 
 /* =========================================================

@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة مراقبة أحمال لوحات الضغط المنخفض | وزارة الكهرباء والماء - الكويت</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    :root{
+        --bg:#0a121d; --bg-2:#0d1826;
+        --panel:#101d2e; --panel-2:#14233a; --panel-border:#1f3350;
+        --text:#e7edf6; --muted:#8ea0bd; --muted-2:#5c7191;
+        --accent:#22d3ee; --accent-dim:rgba(34,211,238,.14);
+        --r-phase:#ef4b5f; --y-phase:#f4b400; --b-phase:#2e86de;
+        --ok:#22c55e; --ok-dim:rgba(34,197,94,.14);
+        --warn:#f4b400; --warn-dim:rgba(244,180,0,.14);
+        --crit:#ef4b5f; --crit-dim:rgba(239,75,95,.16);
+        --watch:#f2994a; --watch-dim:rgba(242,153,74,.14);
+        --radius:14px;
+        --mono:'JetBrains Mono',monospace;
+        --disp:'Cairo',sans-serif;
+        --body:'IBM Plex Sans Arabic',sans-serif;
+    }
+    body.light{
+        --bg:#eef2f7; --bg-2:#e6ecf3;
+        --panel:#ffffff; --panel-2:#f5f8fb; --panel-border:#dde5ee;
+        --text:#0f1c2e; --muted:#4c5c72; --muted-2:#7789a0;
+        --accent:#0891b2; --accent-dim:rgba(8,145,178,.08);
+    }
+    *{box-sizing:border-box;}
+    body{
+        margin:0; font-family:var(--body); background:
+            radial-gradient(1200px 600px at 85% -10%, var(--bg-2), transparent),
+            radial-gradient(900px 500px at -10% 110%, var(--bg-2), transparent), var(--bg);
+        color:var(--text); min-height:100vh; padding:22px; transition:background .25s,color .25s;
+    }
+    a{color:var(--accent);}
+    ::selection{background:var(--accent-dim);}
+
+    /* ---------- Header ---------- */
+    .topbar{
+        display:flex; flex-direction:column; gap:16px;
+        background:linear-gradient(180deg,var(--panel),var(--panel-2));
+        border:1px solid var(--panel-border); border-radius:var(--radius);
+        padding:18px 22px; margin-bottom:16px;
+    }
+    .header-row{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+    .brand{display:flex; align-items:flex-start; gap:16px;}
+    .emblem{width:60px;height:60px;object-fit:contain;flex:0 0 auto;border-radius:10px;}
+    .emblem-fallback{
+        width:60px;height:60px;border-radius:12px;flex:0 0 auto;position:relative;overflow:hidden;
+        border:1px solid var(--panel-border); background:#fff;
+    }
+    .emblem-fallback .band{position:absolute;left:0;right:0;height:34%;}
+    .emblem-fallback .g{top:0;background:#007a3d;}
+    .emblem-fallback .w{top:33%;background:#f7f7f7;}
+    .emblem-fallback .r{top:66%;background:#ce1126;}
+    .emblem-fallback .blk{position:absolute;top:0;bottom:0;left:0;width:24%;background:#111; clip-path:polygon(0 0,100% 0,58% 50%,100% 100%,0 100%);}
+    .brand-mark{ /* legacy phase-color mark, used as fallback if no image and no flag style desired */
+        width:46px;height:46px;border-radius:10px;flex:0 0 auto;
+        background:conic-gradient(from 180deg,var(--r-phase),var(--y-phase),var(--b-phase),var(--r-phase));
+        display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+        font-weight:700;color:#08111d;font-size:.72em;position:relative;
+    }
+    .ministry-line{font-size:.85em; color:var(--muted); font-weight:600; letter-spacing:.2px; margin-bottom:3px;}
+    .brand h1{font-family:var(--disp); font-size:1.22em; margin:0; font-weight:800; letter-spacing:.2px; line-height:1.5;}
+    .area-line{margin-top:5px; font-size:.95em; color:var(--accent); font-weight:700;}
+    .editable-inline{border-bottom:1px dashed var(--accent); padding:0 4px; outline:none; cursor:text; color:var(--accent);}
+    .editable-inline:empty::before{content:'اسم المراقبة'; color:var(--muted-2); font-weight:500;}
+    .editable-inline:focus{background:var(--accent-dim); border-radius:4px;}
+
+    .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .btn{
+        background:var(--panel-2); color:var(--text); border:1px solid var(--panel-border);
+        padding:10px 16px; border-radius:9px; cursor:pointer; font-family:var(--body); font-size:.92em;
+        font-weight:600; display:flex; align-items:center; gap:7px; transition:.15s;
+    }
+    .btn:hover{border-color:var(--accent); color:var(--accent);}
+    .btn:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+    .btn.primary{background:var(--accent); color:#04222b; border-color:var(--accent);}
+    .btn.primary:hover{filter:brightness(1.08); color:#04222b;}
+    select, input[type="number"], input[type="text"]{
+        background:var(--panel-2); color:var(--text); border:1px solid var(--panel-border);
+        padding:9px 12px; border-radius:9px; font-family:var(--body); font-size:.9em;
+    }
+    label.file-btn{position:relative; overflow:hidden;}
+    label.file-btn input{position:absolute; inset:0; opacity:0; cursor:pointer;}
+    .drive-btn{background:var(--panel-2); border:1px solid var(--panel-border);}
+    .drive-btn:hover{border-color:var(--ok); color:var(--ok);}
+
+    /* ---------- Empty state ---------- */
+    #empty-state{
+        text-align:center; padding:70px 20px; border:2px dashed var(--panel-border); border-radius:var(--radius);
+        color:var(--muted); background:var(--panel); transition:.15s;
+    }
+    #empty-state.drag-over{border-color:var(--accent); background:var(--accent-dim);}
+    #empty-state .ic{font-size:2.4em; margin-bottom:10px;}
+    #empty-state h2{font-family:var(--disp); color:var(--text); font-size:1.2em;}
+    #empty-state p{max-width:560px; margin:8px auto 0; line-height:1.9; font-size:.92em;}
+    #empty-state .drop-actions{display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap;}
+    #drop-status{margin-top:12px; font-size:.82em; color:var(--accent); font-family:var(--mono); min-height:18px;}
+    .mini-dropzone{
+        display:flex; align-items:center; gap:8px; padding:9px 14px; border:1.5px dashed var(--panel-border);
+        border-radius:9px; font-size:.86em; color:var(--muted); transition:.15s;
+    }
+    .mini-dropzone.drag-over{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
+
+    /* ---------- Settings drawer ---------- */
+    #settings-panel, #report-panel{
+        display:none; background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius);
+        padding:18px 22px; margin-bottom:16px;
+    }
+    #settings-panel h3, #report-panel h3{margin:0 0 12px; font-family:var(--disp); font-size:1em; color:var(--accent);}
+    .settings-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px;}
+    .settings-grid label{display:flex; flex-direction:column; gap:6px; font-size:.82em; color:var(--muted);}
+    .settings-grid input, .settings-grid select{width:100%;}
+    .settings-actions{margin-top:14px; display:flex; gap:10px;}
+
+    /* ---------- KPI ---------- */
+    .kpi-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:12px; margin-bottom:16px;}
+    .kpi{
+        background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius);
+        padding:16px 18px; position:relative; overflow:hidden;
+    }
+    .kpi::before{content:'';position:absolute; inset-inline-start:0; top:0; bottom:0; width:4px; background:var(--accent);}
+    .kpi.crit::before{background:var(--crit);} .kpi.warn::before{background:var(--warn);} .kpi.ok::before{background:var(--ok);}
+    .kpi h3{margin:0; font-size:.78em; color:var(--muted); font-weight:600;}
+    .kpi .val{font-family:var(--mono); font-size:1.9em; font-weight:700; margin-top:6px;}
+    .kpi.crit .val{color:var(--crit);} .kpi.warn .val{color:var(--warn);} .kpi.ok .val{color:var(--ok);}
+    .kpi .sub{font-size:.74em; color:var(--muted-2); margin-top:2px;}
+
+    /* ---------- Section shell ---------- */
+    .panel{
+        background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius);
+        padding:20px 22px; margin-bottom:16px;
+    }
+    .panel-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+    .panel-head h2{font-family:var(--disp); font-size:1.05em; margin:0; display:flex; align-items:center; gap:8px;}
+    .panel-head .count{font-family:var(--mono); font-size:.78em; color:var(--muted); background:var(--panel-2); padding:3px 10px; border-radius:20px; border:1px solid var(--panel-border);}
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+    .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+    @media (max-width:900px){ .grid-2,.grid-3{grid-template-columns:1fr;} }
+
+    /* ---------- Gauges (signature element) ---------- */
+    .gauge-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px;}
+    .gauge-card{
+        background:var(--panel-2); border:1px solid var(--panel-border); border-radius:12px;
+        padding:14px; text-align:center; position:relative;
+    }
+    .gauge-card .ss{font-family:var(--mono); font-size:.72em; color:var(--muted); letter-spacing:.5px;}
+    .gauge-card .tname{font-weight:700; margin:2px 0 8px; font-size:.95em;}
+    .gauge-wrap{position:relative; width:150px; height:82px; margin:0 auto;}
+    .gauge-num{position:absolute; bottom:2px; left:0; right:0; text-align:center; font-family:var(--mono); font-weight:700; font-size:1.3em;}
+    .gauge-lbl{position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:.68em; color:var(--muted);}
+    .phase-mini{display:flex; justify-content:center; gap:10px; margin-top:24px; font-family:var(--mono); font-size:.72em;}
+    .phase-mini span{display:flex; align-items:center; gap:4px;}
+    .dot{width:8px;height:8px;border-radius:50%; display:inline-block;}
+    .dot.r{background:var(--r-phase);} .dot.y{background:var(--y-phase);} .dot.b{background:var(--b-phase);}
+    .gauge-badge{position:absolute; top:10px; left:10px; font-size:.68em; padding:2px 8px; border-radius:20px; font-family:var(--mono); font-weight:700;}
+
+    /* ---------- Severity badges ---------- */
+    .sev{display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:.76em; font-weight:700; white-space:nowrap;}
+    .sev.crit{background:var(--crit-dim); color:var(--crit);}
+    .sev.high{background:var(--watch-dim); color:var(--watch);}
+    .sev.med{background:var(--warn-dim); color:var(--warn);}
+    .sev.ok{background:var(--ok-dim); color:var(--ok);}
+    .sev::before{content:'●'; font-size:.7em;}
+
+    /* ---------- Tables ---------- */
+    .tbl-wrap{overflow-x:auto;}
+    table{width:100%; border-collapse:collapse; font-size:.87em;}
+    th,td{padding:10px 12px; text-align:right; border-bottom:1px solid var(--panel-border); white-space:nowrap;}
+    th{color:var(--muted); font-weight:600; font-size:.82em; position:sticky; top:0; background:var(--panel);}
+    td.num{font-family:var(--mono);}
+    tbody tr:hover{background:var(--accent-dim);}
+    td.wrap{white-space:normal; min-width:220px; line-height:1.7; color:var(--muted); font-size:.93em;}
+    .empty-row td{text-align:center; color:var(--muted); padding:22px;}
+
+    .chart-box{background:var(--panel-2); border:1px solid var(--panel-border); border-radius:12px; padding:14px; height:300px;}
+
+    /* ---------- Cable load map ---------- */
+    .cable-cell{
+        display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+        min-width:52px; padding:4px 6px; border-radius:7px; font-family:var(--mono); font-size:.78em; font-weight:700;
+        line-height:1.25;
+    }
+    .cable-cell small{font-weight:500; font-size:.85em; opacity:.85;}
+    .cable-cell.ok{background:var(--ok-dim); color:var(--ok);}
+    .cable-cell.warn{background:var(--watch-dim); color:var(--watch);}
+    .cable-cell.crit{background:var(--crit-dim); color:var(--crit);}
+    .cable-cell.dim{background:transparent; color:var(--muted-2); font-weight:500;}
+
+    /* ---------- Reference / remediation guide ---------- */
+    .ref-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px;}
+    details.ref-card{background:var(--panel-2); border:1px solid var(--panel-border); border-radius:12px; padding:14px 16px;}
+    details.ref-card summary{cursor:pointer; font-weight:700; list-style:none; display:flex; align-items:center; justify-content:space-between;}
+    details.ref-card summary::-webkit-details-marker{display:none;}
+    details.ref-card summary .chev{transition:.2s; color:var(--muted);}
+    details.ref-card[open] summary .chev{transform:rotate(90deg);}
+    .ref-card .body{margin-top:10px; font-size:.87em; line-height:1.9; color:var(--muted);}
+    .ref-card .body b{color:var(--text);}
+    .ref-card .lim{font-family:var(--mono); font-size:.78em; color:var(--accent); margin-top:6px; display:block;}
+
+    footer{text-align:center; color:var(--muted-2); font-size:.78em; padding:20px 0 6px;}
+
+    /* ---------- Report view (focused, distributable report) ---------- */
+    #report-view{display:none;}
+    body.report-mode #dashboard, body.report-mode #empty-state,
+    body.report-mode #settings-panel, body.report-mode #report-panel{ display:none !important; }
+    body.report-mode #report-view{ display:block; }
+    body.report-mode .toolbar{ display:none !important; }
+
+    .report-actions{display:flex; gap:10px; margin-bottom:16px;}
+    .report-doc{
+        background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius);
+        padding:30px 34px;
+    }
+    .report-doc-header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; border-bottom:2px solid var(--panel-border); padding-bottom:16px; margin-bottom:18px; flex-wrap:wrap;}
+    .report-doc-header .brand{align-items:center;}
+    .report-title{font-family:var(--disp); font-size:1.4em; font-weight:800; margin:14px 0 4px; color:var(--crit);}
+    .report-subtitle{color:var(--muted); font-size:.9em;}
+    .report-meta{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; background:var(--panel-2); border:1px solid var(--panel-border); border-radius:10px; padding:14px 16px; margin-bottom:20px;}
+    .report-meta div b{display:block; color:var(--text); font-size:.95em; margin-top:2px;}
+    .report-meta div span.lbl{font-size:.75em; color:var(--muted);}
+    .report-section-title{font-family:var(--disp); font-size:1.05em; margin:24px 0 12px; padding-inline-start:10px; border-inline-start:4px solid var(--accent);}
+    .report-empty{padding:20px; text-align:center; color:var(--ok); background:var(--ok-dim); border-radius:10px; font-weight:600;}
+    .report-sign{display:flex; gap:40px; margin-top:36px; flex-wrap:wrap;}
+    .report-sign div{flex:1; min-width:180px; border-top:1px solid var(--panel-border); padding-top:8px; color:var(--muted); font-size:.85em;}
+
+    @media print{
+        body{background:#fff; color:#000; padding:0;}
+        .toolbar,.btn,#settings-panel,#report-panel{display:none !important;}
+        .panel,.kpi,.gauge-card,.chart-box,.report-doc{border:1px solid #ccc !important; box-shadow:none !important; background:#fff !important;}
+        .topbar{background:#fff !important; border-bottom:2px solid #000;}
+        .report-meta{background:#f5f5f5 !important;}
+        table{font-size:.8em;}
+        .sev{border:1px solid currentColor;}
+    }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="header-row">
+        <div class="brand">
+            <img id="emblem-img" class="emblem" src="kuwait-emblem.png" alt="شعار دولة الكويت" onerror="handleEmblemError(this)">
+            <div id="emblem-fallback" class="emblem-fallback" style="display:none;">
+                <span class="band g"></span><span class="band w"></span><span class="band r"></span><span class="blk"></span>
+            </div>
+            <div>
+                <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
+                <h1>لوحة مراقبة أحمال الضغط المنخفض لمراقبة <span id="office-name" class="editable-inline" contenteditable="true" spellcheck="false"></span></h1>
+                <div class="area-line" id="area-tag">بانتظار البيانات</div>
+            </div>
+        </div>
+    </div>
+    <div class="toolbar">
+        <label class="btn primary file-btn">📂 إدراج ملف القراءات (Excel)
+            <input type="file" id="excel-upload" accept=".xlsx,.xls">
+        </label>
+        <button class="btn drive-btn" onclick="openDriveFolder()">🗂️ فتح فولدر Google Drive</button>
+        <div class="mini-dropzone" id="mini-dropzone">⬇️ أو اسحب الملف من تبويب Drive وأفلته هنا</div>
+        <select id="sheet-select" style="display:none;"></select>
+        <label class="btn" id="combine-wrap" style="display:none; cursor:pointer;">
+            <input type="checkbox" id="combine-all" style="accent-color:var(--accent);"> تحليل شامل لكل المناطق
+        </label>
+        <button class="btn" id="settings-toggle" onclick="toggleSettings()">⚙️ معايير التقييم</button>
+        <button class="btn primary" id="report-toggle-btn" style="display:none;" onclick="toggleReportPanel()">📄 إنشاء تقرير مخصص</button>
+        <button class="btn" onclick="toggleTheme()">🌓 الوضع الفاتح/الداكن</button>
+        <button class="btn" onclick="window.print()">🖨️ طباعة اللوحة كاملة</button>
+    </div>
+</div>
+
+<div id="settings-panel">
+    <h3>معايير التقييم الفني (قابلة للتعديل حسب مواصفات الشبكة)</h3>
+    <div class="settings-grid">
+        <label>جهد الشبكة L-L (فولت)
+            <input type="number" id="cfg-voltage" value="415"></label>
+        <label>حد التحميل المرتفع (%)
+            <input type="number" id="cfg-overload-high" value="80"></label>
+        <label>حد التحميل الحرج (%)
+            <input type="number" id="cfg-overload-crit" value="100"></label>
+        <label>حد عدم الاتزان المرتفع (%)
+            <input type="number" id="cfg-unb-high" value="15"></label>
+        <label>حد عدم الاتزان الحرج (%)
+            <input type="number" id="cfg-unb-crit" value="25"></label>
+        <label>حد تيار النيوترال (% من متوسط الفاز)
+            <input type="number" id="cfg-neutral-high" value="25"></label>
+        <label>مقطع الكيبل الرئيسي (مم²)
+            <input type="number" id="cfg-cable-section" value="300"></label>
+        <label>السعة القصوى للكيبل (أمبير)
+            <input type="number" id="cfg-feeder-rated" value="300"></label>
+        <label>نسبة تحذير تحميل الكيبل (%)
+            <input type="number" id="cfg-feeder-warn" value="85"></label>
+        <label>نسبة الحمل الحرج للكيبل (%)
+            <input type="number" id="cfg-feeder-crit-pct" value="100"></label>
+        <label>حد "المحول المتاح" لاستقبال مناورة (%)
+            <input type="number" id="cfg-shift-available" value="60"></label>
+    </div>
+    <div class="settings-actions">
+        <button class="btn primary" onclick="applySettingsAndRerun()">✅ تطبيق وإعادة التحليل</button>
+        <button class="btn" onclick="toggleSettings()">إغلاق</button>
+    </div>
+</div>
+
+<div id="report-panel">
+    <h3>📄 إعداد تقرير مخصص للمراقبة</h3>
+    <p style="margin:0 0 14px; color:var(--muted); font-size:.85em; line-height:1.8;">
+        يولّد النظام تقريراً مختصراً يشمل الحالات الحرجة والخطرة فقط مع الإجراء المطلوب لكل حالة — جاهز للطباعة أو الحفظ كـ PDF وإرسال نسخة مستقلة لكل مراقبة أو منطقة.
+    </p>
+    <div class="settings-grid">
+        <label>نطاق التقرير
+            <select id="report-area-filter"></select>
+        </label>
+        <label>مستوى الخطورة المشمول
+            <select id="report-severity">
+                <option value="crit">حرج فقط</option>
+                <option value="crit_high" selected>حرج + مرتفع</option>
+            </select>
+        </label>
+        <label>الجهة المستلمة (اختياري)
+            <input type="text" id="report-recipient" placeholder="مثال: مراقبة الفروانية">
+        </label>
+        <label>إعداد / الموقّع (اختياري)
+            <input type="text" id="report-prepared-by" placeholder="مثال: قسم التشغيل">
+        </label>
+    </div>
+    <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:14px; font-size:.85em; color:var(--muted);">
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-kpi" checked style="accent-color:var(--accent);"> تضمين ملخص المؤشرات
+        </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-cables" checked style="accent-color:var(--accent);"> تضمين الكيبلات الحرجة
+        </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-guide" style="accent-color:var(--accent);"> تضمين دليل المعالجة العام (ملحق)
+        </label>
+    </div>
+    <div class="settings-actions">
+        <button class="btn primary" onclick="generateReport()">🖨️ إنشاء ومعاينة التقرير</button>
+        <button class="btn" onclick="toggleReportPanel()">إغلاق</button>
+    </div>
+</div>
+
+<div id="empty-state">
+    <div class="ic">🗂️</div>
+    <h2>ارفع ملف قراءات الذروة لبدء التحليل</h2>
+    <p>يقبل النظام ملف الإكسل الخاص بمراقبة كهربائية (بصيغة القالب الموحّد: S/S Number، Trans. Size، وقراءات R/Y/B/N لكل مغذي). اختر منطقة واحدة من القائمة، أو فعّل "تحليل شامل لكل المناطق" لعرض صورة كاملة عن المراقبة بأكملها.</p>
+    <p style="color:var(--text); font-weight:600;">الملفات محفوظة في Google Drive؟ افتح الفولدر، ثم اسحب ملف الإكسل وأفلته في هذه المنطقة مباشرة — بدون تحميل يدوي.</p>
+    <div class="drop-actions">
+        <button class="btn primary" onclick="openDriveFolder()">🗂️ فتح فولدر Drive في تبويب جديد</button>
+        <label class="btn file-btn">📂 أو اختر ملفاً من الجهاز
+            <input type="file" id="excel-upload-2" accept=".xlsx,.xls">
+        </label>
+    </div>
+    <div id="drop-status"></div>
+    <div id="preset-areas" style="margin-top:26px; padding-top:22px; border-top:1px dashed var(--panel-border);">
+        <p style="color:var(--muted); font-weight:600; margin-bottom:12px;">أو اختر بيانات محافظة محفوظة على الموقع مباشرة:</p>
+        <div class="drop-actions" id="preset-btns"></div>
+    </div>
+</div>
+
+<div id="dashboard" style="display:none;">
+
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <!-- Analog gauge cluster -->
+    <div class="panel">
+        <div class="panel-head">
+            <h2>🎛️ لوحة العدادات — أخطر المحولات تحميلاً</h2>
+            <span class="count" id="gauge-count">0</span>
+        </div>
+        <div class="gauge-grid" id="gauge-grid"></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-head"><h2>📈 ترتيب المحولات حسب نسبة التحميل</h2></div>
+        <div class="chart-box" style="height:340px;"><canvas id="rankChart"></canvas></div>
+    </div>
+
+    <!-- Load shifting -->
+    <div class="panel">
+        <div class="panel-head"><h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2></div>
+        <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em; line-height:1.9;">
+            <b style="color:var(--text)">طريقة العمل:</b> يفحص النظام كل محطة على حدة. إذا وُجد بها محول محمّل بنسبة
+            ≥ <span id="shift-method-high">80</span>% من سعته، يبحث عن محول آخر في نفس المحطة محمّل بأقل من
+            <span id="shift-method-low">60</span>%. عند توفر الشرطين، يقترح النظام فصل أعلى كيبل تحميلاً (الأكثر تياراً) من المحول
+            المجهد وربطه على أقل كيبل تحميلاً في المحول المتاح، لتخفيف الضغط عن الأول دون تجاوز سعة الثاني.
+        </p>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr><th>المحطة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                <tbody id="table-shifts"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Risk Register: signature analytical output -->
+    <div class="panel">
+        <div class="panel-head">
+            <h2>🛡️ سجل المخاطر الفنية <span class="count" id="risk-count">0 حالة</span></h2>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr>
+                    <th>الخطورة</th><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
+                    <th>القيمة المقاسة</th><th>السبب المرجّح</th><th>إجراء المعالجة المقترح</th>
+                </tr></thead>
+                <tbody id="risk-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Cable / feeder load map (new: per-cable visibility) -->
+    <div class="panel">
+        <div class="panel-head">
+            <h2>🧵 خريطة تحميل الكيبلات الرئيسية (U1–U6)</h2>
+            <span class="count" id="cable-count">0 كيبل مرتفع</span>
+        </div>
+        <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">
+            كل محول يغذّي المستهلكين عبر ستة كيبلات رئيسية (300 مم² — سعة ~<span id="cable-rated-lbl">300</span> أمبير). الخلية الملوّنة تمثّل أعلى تيار فاز مسجّل على ذلك الكيبل كنسبة من سعته.
+        </p>
+        <label style="display:flex; align-items:center; gap:8px; font-size:.85em; color:var(--muted); margin-bottom:12px; cursor:pointer; width:fit-content;">
+            <input type="checkbox" id="cable-show-all" style="accent-color:var(--accent);"> عرض كل المحولات (وليس المرتفعة فقط)
+        </label>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr>
+                    <th>المحطة</th><th>المنطقة</th><th>المحول</th>
+                    <th>U1</th><th>U2</th><th>U3</th><th>U4</th><th>U5</th><th>U6</th><th>أعلى كيبل</th>
+                </tr></thead>
+                <tbody id="table-cable-map"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="panel">
+        <div class="panel-head"><h2>📊 التحليل الإحصائي</h2></div>
+        <div class="grid-3">
+            <div class="chart-box"><canvas id="pieChart"></canvas></div>
+            <div class="chart-box"><canvas id="radarChart"></canvas></div>
+            <div class="chart-box"><canvas id="sizeChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Detail tables -->
+    <div class="grid-2">
+        <div class="panel">
+            <div class="panel-head"><h2 style="color:var(--crit)">⚡ كيبلات (مغذيات) تجاوزت الحد المسموح</h2></div>
+            <div class="tbl-wrap"><table>
+                <thead><tr><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من سعة الكيبل</th><th>الحالة</th></tr></thead>
+                <tbody id="table-high-feeders"></tbody>
+            </table></div>
+        </div>
+        <div class="panel">
+            <div class="panel-head"><h2 style="color:var(--crit)">🔴 أخطر المحولات تحميلاً</h2></div>
+            <div class="tbl-wrap"><table>
+                <thead><tr><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>الحمل %</th><th>الحالة</th></tr></thead>
+                <tbody id="table-overloaded"></tbody>
+            </table></div>
+        </div>
+        <div class="panel">
+            <div class="panel-head"><h2 style="color:var(--warn)">🟡 أعلى نسب عدم الاتزان</h2></div>
+            <div class="tbl-wrap"><table>
+                <thead><tr><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>نسبة الخلل %</th></tr></thead>
+                <tbody id="table-unbalance"></tbody>
+            </table></div>
+        </div>
+        <div class="panel">
+            <div class="panel-head"><h2>⚠️ أعلى تيارات النيوترال</h2></div>
+            <div class="tbl-wrap"><table>
+                <thead><tr><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>النيوترال (A)</th><th>% من متوسط الفاز</th></tr></thead>
+                <tbody id="table-neutral"></tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <!-- Reference guide -->
+    <div class="panel">
+        <div class="panel-head"><h2>📘 دليل المخاطر الفنية العامة وطرق المعالجة</h2></div>
+        <div class="ref-grid" id="ref-grid"></div>
+    </div>
+
+</div>
+
+<div id="report-view">
+    <div class="report-actions">
+        <button class="btn" onclick="exitReportMode()">⬅️ رجوع للوحة الرئيسية</button>
+        <button class="btn primary" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+    </div>
+    <div class="report-doc">
+        <div class="report-doc-header">
+            <div class="brand">
+                <img class="emblem" src="kuwait-emblem.png" alt="شعار دولة الكويت" onerror="handleEmblemError(this)">
+                <div id="report-emblem-fallback" class="emblem-fallback" style="display:none;">
+                    <span class="band g"></span><span class="band w"></span><span class="band r"></span><span class="blk"></span>
+                </div>
+                <div>
+                    <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
+                    <div style="font-weight:700;" id="report-office-line">قسم التشغيل</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-title" id="report-title">تقرير الحالات الحرجة والخطرة</div>
+        <div class="report-subtitle" id="report-subtitle">أحمال لوحات الضغط المنخفض — ذروة الأحمال</div>
+
+        <div class="report-meta" id="report-meta"></div>
+
+        <div id="report-kpi-section">
+            <div class="report-section-title">📊 ملخص المؤشرات</div>
+            <div class="kpi-row" id="report-kpi-row"></div>
+        </div>
+
+        <div class="report-section-title">🛡️ الحالات المشمولة والإجراء المطلوب</div>
+        <div id="report-risk-wrap" class="tbl-wrap">
+            <table>
+                <thead><tr>
+                    <th>الخطورة</th><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
+                    <th>القيمة المقاسة</th><th>الإجراء المطلوب</th>
+                </tr></thead>
+                <tbody id="report-risk-body"></tbody>
+            </table>
+        </div>
+
+        <div id="report-cables-section">
+            <div class="report-section-title">🧵 الكيبلات الحرجة (قرب أو تجاوز السعة)</div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead><tr><th>المحطة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من السعة</th></tr></thead>
+                    <tbody id="report-cables-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="report-guide-section">
+            <div class="report-section-title">📘 ملحق: دليل المعالجة العام</div>
+            <div class="ref-grid" id="report-guide-grid"></div>
+        </div>
+
+        <div class="report-sign">
+            <div><span class="lbl">إعداد</span><br><b id="report-prepared-out">—</b></div>
+            <div><span class="lbl">تاريخ الإصدار</span><br><b id="report-date-out">—</b></div>
+            <div><span class="lbl">التوقيع / الاعتماد</span><br>&nbsp;</div>
+        </div>
+    </div>
+</div>
+
+<footer>نظام تحليل أحمال لوحات الضغط المنخفض — قسم التشغيل · يعمل بالكامل داخل المتصفح ولا يرفع أي بيانات لأي خادم خارجي</footer>
+
+<script>
+/* =========================================================
+   CONFIG — كل المعايير قابلة للتعديل من لوحة الإعدادات
+========================================================= */
+let CFG = {
+    voltage: 415,
+    overloadHigh: 80,
+    overloadCrit: 100,
+    unbHigh: 15,
+    unbCrit: 25,
+    neutralHigh: 25,
+    cableSection: 300,
+    feederRated: 300,
+    feederWarnPct: 85,
+    feederCritPct: 100,
+    shiftAvailable: 60
+};
+
+const RISK_LIB = {
+    overload: {
+        label: 'تحميل زائد على المحول',
+        cause: 'زيادة الأحمال المضافة حديثاً دون ترقية للسعة، أو تمركز أحمال التكييف في فترة الذروة الصيفية، أو نقل غير مخطط لأحمال من محولات مجاورة.',
+        risk: 'ارتفاع حرارة الزيت والملفات، تسارع تلف العزل، تقليص العمر الافتراضي للمحول، احتمال الفصل المفاجئ (Trip) أو حريق في الحالات الحرجة.',
+        remedy: 'نقل جزء من المغذيات إلى محول متاح في نفس المحطة أو محطة مجاورة، إعادة توزيع الأحمال بين الفازات، دراسة ترقية السعة إلى 1250 ك.ف.أ عند تكرار التجاوز، تفعيل تصوير حراري دوري (Thermal Imaging).'
+    },
+    unbalance: {
+        label: 'عدم اتزان بين الفازات',
+        cause: 'توزيع غير متساوٍ للأحمال أحادية الطور (سكنية/تجارية) بين الفازات R-Y-B، أو أعطال/انقطاع في بعض المغذيات الفرعية.',
+        risk: 'ارتفاع تيار النيوترال، زيادة الفاقد الحراري داخل المحول، اختلال الجهد بين الفازات، تسريع تآكل العزل والوصلات.',
+        remedy: 'إعادة توزيع المشتركين أحاديي الطور بالتساوي على الفازات الثلاث، مسح ميداني لنقاط التحميل غير المتوازن، الالتزام بتدوير الفازات عند أي توصيل جديد.'
+    },
+    neutral: {
+        label: 'ارتفاع تيار النيوترال',
+        cause: 'نتيجة مباشرة لعدم اتزان الأحمال بين الفازات، أو وجود توافقيات (Harmonics) من أحمال إلكترونية غير خطية.',
+        risk: 'تجاوز تيار الموصل المحايد لسعته التصميمية، سخونة زائدة عند نقاط التأريض والوصلات، وتأثيرات ثانوية على جودة الجهد.',
+        remedy: 'معالجة عدم اتزان الأحمال كسبب جذري أولاً، فحص وصلات التأريض والحيادي دورياً، دراسة تركيب مرشحات توافقيات عند الحاجة.'
+    },
+    feeder: {
+        label: 'تجاوز سعة الكيبل الرئيسي',
+        cause: 'تركّز عدد كبير من المشتركين على كيبل واحد من الكيبلات الستة الرئيسية (300 مم²) دون توزيع كافٍ، أو نمو استهلاك غير متوقع ضمن نطاقه.',
+        risk: 'تجاوز السعة الحرارية للكيبل (≈300 A لمقطع 300 مم²)، تسارع تلف العزل، احتمال قصر أو حريق عند نقاط الوصل الضعيفة، وتقصير عمر الكيبل الافتراضي.',
+        remedy: 'فصل جزء من المشتركين إلى كيبل آخر أقل تحميلاً من بين الستة الرئيسية، إعادة توزيع الأحمال بين المخارج، ودراسة إضافة كيبل موازٍ (Parallel) أو تعزيز القطاع عند تكرار التجاوز.'
+    }
+};
+
+/* =========================================================
+   STATE
+========================================================= */
+let workbook = null;
+let lastSelection = { sheetName: null, combineAll: false };
+let charts = { pie:null, radar:null, size:null, rank:null, gauges:[] };
+let globalTx = [];
+
+/* =========================================================
+   UI HELPERS
+========================================================= */
+function handleEmblemError(img){
+    img.style.display = 'none';
+    const fb = img.nextElementSibling;
+    if(fb && fb.classList.contains('emblem-fallback')) fb.style.display = 'block';
+}
+function toggleTheme(){
+    document.body.classList.toggle('light');
+    if(globalTx.length) renderCharts(globalTx);
+}
+function toggleSettings(){
+    const p = document.getElementById('settings-panel');
+    p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+}
+function readCfgFromInputs(){
+    CFG.voltage       = parseFloat(document.getElementById('cfg-voltage').value)       || 415;
+    CFG.overloadHigh  = parseFloat(document.getElementById('cfg-overload-high').value) || 80;
+    CFG.overloadCrit  = parseFloat(document.getElementById('cfg-overload-crit').value) || 100;
+    CFG.unbHigh       = parseFloat(document.getElementById('cfg-unb-high').value)      || 15;
+    CFG.unbCrit       = parseFloat(document.getElementById('cfg-unb-crit').value)      || 25;
+    CFG.neutralHigh   = parseFloat(document.getElementById('cfg-neutral-high').value)  || 25;
+    CFG.cableSection  = parseFloat(document.getElementById('cfg-cable-section').value) || 300;
+    CFG.feederRated   = parseFloat(document.getElementById('cfg-feeder-rated').value)  || 300;
+    CFG.feederWarnPct = parseFloat(document.getElementById('cfg-feeder-warn').value)   || 85;
+    CFG.feederCritPct = parseFloat(document.getElementById('cfg-feeder-crit-pct').value) || 100;
+    CFG.shiftAvailable = parseFloat(document.getElementById('cfg-shift-available').value) || 60;
+}
+function applySettingsAndRerun(){
+    readCfgFromInputs();
+    if(workbook) runAnalysis();
+}
+
+/* =========================================================
+   FOCUSED REPORT GENERATOR
+========================================================= */
+function toggleReportPanel(){
+    if(!globalTx.length) return;
+    const p = document.getElementById('report-panel');
+    const opening = p.style.display !== 'block';
+    p.style.display = opening ? 'block' : 'none';
+    if(opening) populateReportAreaFilter();
+}
+function populateReportAreaFilter(){
+    const sel = document.getElementById('report-area-filter');
+    const areas = [...new Set(globalTx.map(t=>t.area))].sort();
+    const prev = sel.value;
+    sel.innerHTML = '<option value="__all__">كل المناطق المحمّلة حالياً (' + areas.length + ')</option>' +
+        areas.map(a=>`<option value="${a}">${a} فقط</option>`).join('');
+    if([...sel.options].some(o=>o.value===prev)) sel.value = prev;
+}
+function exitReportMode(){
+    document.body.classList.remove('report-mode');
+    window.scrollTo({top:0, behavior:'instant'});
+}
+
+function generateReport(){
+    if(!globalTx.length) return;
+
+    const severity = document.getElementById('report-severity').value;
+    const areaFilter = document.getElementById('report-area-filter').value;
+    const incKpi = document.getElementById('report-inc-kpi').checked;
+    const incCables = document.getElementById('report-inc-cables').checked;
+    const incGuide = document.getElementById('report-inc-guide').checked;
+    const recipient = document.getElementById('report-recipient').value.trim();
+    const preparedBy = document.getElementById('report-prepared-by').value.trim();
+
+    const txsScoped = areaFilter === '__all__' ? globalTx : globalTx.filter(t=>t.area===areaFilter);
+    const risksScoped = computeRisks(txsScoped);
+    const filteredRisks = severity === 'crit'
+        ? risksScoped.filter(r=>r.severity==='crit')
+        : risksScoped.filter(r=>r.severity==='crit' || r.severity==='high');
+
+    const officeName = (document.getElementById('office-name').innerText || '').trim() || 'المراقبة';
+    const scopeLabel = areaFilter === '__all__' ? ('كل المناطق (' + new Set(txsScoped.map(t=>t.area)).size + ')') : areaFilter;
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('ar-KW', {year:'numeric', month:'long', day:'numeric'});
+
+    document.getElementById('report-office-line').innerText = 'مراقبة ' + officeName;
+    document.getElementById('report-subtitle').innerText = 'تقرير أحمال لوحات الضغط المنخفض — ذروة الأحمال · النطاق: ' + scopeLabel;
+    document.getElementById('report-title').innerText = severity === 'crit'
+        ? 'تقرير الحالات الحرجة'
+        : 'تقرير الحالات الحرجة والخطرة';
+
+    document.getElementById('report-meta').innerHTML = `
+        <div><span class="lbl">المراقبة</span><b>${officeName}</b></div>
+        <div><span class="lbl">نطاق التقرير</span><b>${scopeLabel}</b></div>
+        <div><span class="lbl">تاريخ الإصدار</span><b>${dateStr}</b></div>
+        <div><span class="lbl">عدد الحالات المشمولة</span><b>${filteredRisks.length}</b></div>
+        <div><span class="lbl">إجمالي المحولات بالنطاق</span><b>${txsScoped.length}</b></div>
+        ${recipient ? `<div><span class="lbl">موجّه إلى</span><b>${recipient}</b></div>` : ''}
+    `;
+    document.getElementById('report-prepared-out').innerText = preparedBy || 'قسم التشغيل';
+    document.getElementById('report-date-out').innerText = dateStr;
+
+    // KPI summary
+    document.getElementById('report-kpi-section').style.display = incKpi ? 'block' : 'none';
+    if(incKpi){
+        const crit = filteredRisks.filter(r=>r.severity==='crit').length;
+        const high = filteredRisks.filter(r=>r.severity==='high').length;
+        const maxLoad = txsScoped.length ? Math.max(...txsScoped.map(t=>t.loadPct)) : 0;
+        const allFeeders = txsScoped.flatMap(t=>t.feeders);
+        const maxCable = allFeeders.length ? Math.max(...allFeeders.map(f=>f.loadPct)) : 0;
+        const cards = [
+            {t:'حالات حرجة', v:crit, cls:crit>0?'crit':'ok'},
+            {t:'حالات مرتفعة الخطورة', v:high, cls:high>0?'warn':'ok'},
+            {t:'أعلى تحميل محول', v:maxLoad.toFixed(0)+'%', cls: maxLoad>=CFG.overloadCrit?'crit':(maxLoad>=CFG.overloadHigh?'warn':'ok')},
+            {t:'أعلى تحميل كيبل', v:maxCable.toFixed(0)+'%', cls: maxCable>=CFG.feederCritPct?'crit':(maxCable>=CFG.feederWarnPct?'warn':'ok')}
+        ];
+        document.getElementById('report-kpi-row').innerHTML = cards.map(c=>`
+            <div class="kpi ${c.cls}"><h3>${c.t}</h3><div class="val">${c.v}</div></div>`).join('');
+    }
+
+    // Risk table
+    if(filteredRisks.length){
+        document.getElementById('report-risk-body').innerHTML = filteredRisks.map(r=>`
+            <tr>
+                <td>${sevBadge(r.severity)}</td>
+                <td class="num">${r.ss}</td><td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td>
+                <td class="num">${r.value}</td>
+                <td class="wrap">${r.remedy}</td>
+            </tr>`).join('');
+    } else {
+        document.getElementById('report-risk-body').innerHTML =
+            `<tr class="empty-row"><td colspan="7">✅ لا توجد حالات ${severity==='crit'?'حرجة':'حرجة أو مرتفعة الخطورة'} ضمن هذا النطاق — الشبكة ضمن الحدود الطبيعية.</td></tr>`;
+    }
+
+    // Critical cables
+    document.getElementById('report-cables-section').style.display = incCables ? 'block' : 'none';
+    if(incCables){
+        const cables = txsScoped.flatMap(t => t.feeders
+            .filter(f=>f.loadPct >= CFG.feederWarnPct)
+            .map(f => ({t, f})))
+            .sort((a,b)=>b.f.loadPct - a.f.loadPct);
+        document.getElementById('report-cables-body').innerHTML = cables.length ? cables.map(({t,f})=>`
+            <tr><td class="num">${t.ssNum}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
+            <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td></tr>`).join('')
+            : `<tr class="empty-row"><td colspan="6">لا توجد كيبلات تجاوزت نسبة ${CFG.feederWarnPct}% ضمن هذا النطاق</td></tr>`;
+    }
+
+    // General guide appendix
+    document.getElementById('report-guide-section').style.display = incGuide ? 'block' : 'none';
+    if(incGuide){
+        const src = document.getElementById('ref-grid');
+        document.getElementById('report-guide-grid').innerHTML = src ? src.innerHTML : '';
+    }
+
+    document.getElementById('report-panel').style.display = 'none';
+    document.body.classList.add('report-mode');
+    window.scrollTo({top:0, behavior:'instant'});
+}
+
+/* =========================================================
+   FILE HANDLING (local picker + drag&drop from Google Drive tab)
+========================================================= */
+const DRIVE_FOLDER_URL = 'https://drive.google.com/drive/folders/1PHsr7ZSEdET_KBfRhrK1PyHjHB75NV1w';
+function openDriveFolder(){
+    window.open(DRIVE_FOLDER_URL, '_blank');
+    setDropStatus('فتحنا فولدر Drive في تبويب جديد — ارجع له، اسحب ملف الإكسل، وأفلته هنا فوق المربع المتقطع 👇');
+}
+function setDropStatus(msg){
+    const el = document.getElementById('drop-status');
+    if(el) el.innerText = msg || '';
+}
+
+function guessOfficeName(fileName){
+    if(!fileName) return '';
+    let base = fileName.replace(/\.(xlsx|xls)$/i,'').trim();
+    base = base.replace(/[-–]\s*محدث\s*$/,'').trim();
+    const m = base.match(/مراقبة\s+(.+)/);
+    return (m ? m[1] : base).trim();
+}
+
+function loadWorkbookFromArrayBuffer(data, displayName){
+    try{
+        workbook = XLSX.read(data, {type:'array'});
+
+        const officeSpan = document.getElementById('office-name');
+        if(officeSpan && !officeSpan.innerText.trim()){
+            officeSpan.innerText = guessOfficeName(displayName);
+        }
+
+        const sel = document.getElementById('sheet-select');
+        sel.innerHTML = '';
+        workbook.SheetNames.forEach(name=>{
+            const opt = document.createElement('option');
+            opt.value = name; opt.text = name;
+            sel.appendChild(opt);
+        });
+        sel.style.display = 'inline-block';
+        document.getElementById('combine-wrap').style.display = 'inline-flex';
+        sel.value = workbook.SheetNames[0];
+        setDropStatus('✅ تم تحميل ' + displayName + ' — ' + workbook.SheetNames.length + ' منطقة/شيت');
+        runAnalysis();
+    }catch(err){
+        setDropStatus('⚠️ تعذّرت قراءة الملف: ' + err.message);
+    }
+}
+
+function handleWorkbookFile(file){
+    if(!file){ return; }
+    const okExt = /\.(xlsx|xls)$/i.test(file.name || '');
+    if(!okExt){
+        setDropStatus('⚠️ الملف "'+(file.name||'')+'" ليس بصيغة Excel (.xlsx/.xls) — تأكد إنك تسحب ملف الإكسل نفسه لا الفولدر.');
+        return;
+    }
+    setDropStatus('⏳ جارٍ قراءة ' + file.name + ' ...');
+    const reader = new FileReader();
+    reader.onload = function(ev){
+        loadWorkbookFromArrayBuffer(new Uint8Array(ev.target.result), file.name);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+['excel-upload','excel-upload-2'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('change', e=> handleWorkbookFile(e.target.files[0]));
+});
+
+/* Preset areas hosted on the site itself (data/*.xlsx) */
+const PRESET_AREAS = [
+    { file:'data/asima.xlsx',     label:'مراقبة العاصمة' },
+    { file:'data/hawalli.xlsx',   label:'مراقبة حولي' },
+    { file:'data/farwaniya.xlsx', label:'مراقبة الفروانية' },
+    { file:'data/ahmadi.xlsx',    label:'مراقبة الأحمدي' },
+    { file:'data/jahra.xlsx',     label:'مراقبة الجهراء' },
+    { file:'data/mubarak.xlsx',   label:'مراقبة مبارك الكبير' }
+];
+function renderPresetButtons(){
+    const wrap = document.getElementById('preset-btns');
+    if(!wrap) return;
+    wrap.innerHTML = PRESET_AREAS.map(a=>
+        `<button class="btn" onclick="loadPresetArea('${a.file}','${a.label}')">📍 ${a.label}</button>`
+    ).join('');
+}
+renderPresetButtons();
+function loadPresetArea(url, label){
+    setDropStatus('⏳ جارٍ تحميل بيانات ' + label + ' من الموقع ...');
+    fetch(url)
+        .then(res=>{ if(!res.ok) throw new Error('HTTP '+res.status); return res.arrayBuffer(); })
+        .then(buf=>{
+            document.getElementById('office-name').innerText = '';
+            loadWorkbookFromArrayBuffer(new Uint8Array(buf), label + '.xlsx');
+        })
+        .catch(err=> setDropStatus('⚠️ تعذّر تحميل ' + label + ': ' + err.message));
+}
+document.getElementById('sheet-select').addEventListener('change', runAnalysis);
+document.getElementById('combine-all').addEventListener('change', runAnalysis);
+
+/* Drag & drop: works for local files, and for dragging a file out of a
+   Google Drive tab (Chrome/Edge resolve the drag into a real File via
+   the browser's DownloadURL handling). */
+function wireDropzone(el){
+    if(!el) return;
+    ['dragenter','dragover'].forEach(evt=> el.addEventListener(evt, e=>{
+        e.preventDefault(); e.stopPropagation();
+        el.classList.add('drag-over');
+    }));
+    ['dragleave','dragend'].forEach(evt=> el.addEventListener(evt, e=>{
+        e.preventDefault(); e.stopPropagation();
+        el.classList.remove('drag-over');
+    }));
+    el.addEventListener('drop', e=>{
+        e.preventDefault(); e.stopPropagation();
+        el.classList.remove('drag-over');
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if(files && files.length){
+            handleWorkbookFile(files[0]);
+        } else {
+            setDropStatus('⚠️ المتصفح ما قدر يجيب ملف فعلي من هذا السحب. جرّب "فتح فولدر Drive" ثم اضغط تحميل (⬇) على الملف قبل السحب، أو استخدم زر "اختر ملفاً من الجهاز".');
+        }
+    });
+}
+wireDropzone(document.getElementById('empty-state'));
+wireDropzone(document.getElementById('mini-dropzone'));
+// Prevent the whole page from navigating away if a file is dropped outside a dropzone
+window.addEventListener('dragover', e=> e.preventDefault());
+window.addEventListener('drop', e=>{ if(!e.defaultPrevented) e.preventDefault(); });
+
+function runAnalysis(){
+    if(!workbook) return;
+    const sel = document.getElementById('sheet-select');
+    const combineAll = document.getElementById('combine-all').checked;
+    sel.disabled = combineAll;
+    lastSelection = { sheetName: sel.value, combineAll };
+
+    const sheetsToRead = combineAll ? workbook.SheetNames : [sel.value];
+    let allRows = [];
+    sheetsToRead.forEach(name=>{
+        const sheet = workbook.Sheets[name];
+        const json = XLSX.utils.sheet_to_json(sheet, {header:1});
+        allRows.push({ area:name, rows:json });
+    });
+
+    document.getElementById('area-tag').innerText = combineAll
+        ? ('تحليل شامل — ' + workbook.SheetNames.length + ' منطقة')
+        : ('منطقة ' + sel.value);
+
+    processWorkbookData(allRows);
+}
+
+/* =========================================================
+   PARSE + EXTRACT TRANSFORMERS
+========================================================= */
+function processWorkbookData(sheetsData){
+    let transformers = [];
+
+    sheetsData.forEach(({area, rows})=>{
+        if(!rows || rows.length < 2) return;
+        const headers = rows[0];
+        const getIdx = name => headers.findIndex(h => typeof h === 'string' && h.trim() === name);
+        const ssIdx = getIdx('S/S Number');
+        if(ssIdx === -1) return;
+
+        for(let i=1;i<rows.length;i++){
+            const row = rows[i];
+            if(!row || row.length===0 || row[ssIdx]===undefined) continue;
+            const ssNum = String(row[ssIdx]).trim();
+            if(!ssNum) continue;
+
+            for(let t=1;t<=4;t++){
+                const prefix = `T${t}`;
+                const sizeIdx = getIdx(`Trans. ${t} Size`);
+                if(sizeIdx===-1 || !row[sizeIdx]) continue;
+                const size = parseFloat(row[sizeIdx]);
+                if(isNaN(size) || size===0) continue;
+
+                const ratedI = (size*1000) / (Math.sqrt(3) * CFG.voltage);
+
+                const getVal = colName=>{
+                    const idx = getIdx(colName);
+                    if(idx===-1 || row[idx]===undefined) return 0;
+                    const v = parseFloat(row[idx]);
+                    return isNaN(v)?0:v;
+                };
+
+                const rTot = getVal(`${prefix}.S.R1`) + getVal(`${prefix}.S.R2`);
+                const yTot = getVal(`${prefix}.S.Y1`) + getVal(`${prefix}.S.Y2`);
+                const bTot = getVal(`${prefix}.S.B1`) + getVal(`${prefix}.S.B2`);
+                const n    = getVal(`${prefix}.S.N`);
+                if(rTot===0 && yTot===0 && bTot===0) continue;
+
+                const maxPhase = Math.max(rTot,yTot,bTot);
+                const minPhase = Math.min(rTot,yTot,bTot);
+                const avgPhase = (rTot+yTot+bTot)/3;
+                const loadPct = (maxPhase/ratedI)*100;
+                const unbalance = avgPhase>0 ? ((maxPhase-minPhase)/avgPhase)*100 : 0;
+                const neutralPct = avgPhase>0 ? (n/avgPhase)*100 : 0;
+
+                let feeders = [];
+                for(let f=1; f<=6; f++){
+                    const fr = getVal(`${prefix}.U${f}.R`), fy = getVal(`${prefix}.U${f}.Y`), fb = getVal(`${prefix}.U${f}.B`);
+                    const fMax = Math.max(fr, fy, fb);
+                    feeders.push({
+                        feeder:`U${f}`, r:fr, y:fy, b:fb,
+                        maxLoad: fMax,
+                        loadPct: (fMax / CFG.feederRated) * 100
+                    });
+                }
+
+                transformers.push({
+                    area, ssNum, tName:prefix, size, ratedI,
+                    r:rTot, y:yTot, b:bTot, neutral:n,
+                    loadPct, unbalance, neutralPct, feeders
+                });
+            }
+        }
+    });
+
+    globalTx = transformers;
+    document.getElementById('empty-state').style.display = transformers.length ? 'none' : 'block';
+    document.getElementById('dashboard').style.display = transformers.length ? 'block' : 'none';
+    document.getElementById('report-toggle-btn').style.display = transformers.length ? 'inline-flex' : 'none';
+    if(!transformers.length) return;
+
+    const risks = computeRisks(transformers);
+    updateKPIs(transformers, risks);
+    renderRiskRegister(risks);
+    renderGauges(transformers);
+    renderCableMap(transformers);
+    renderCharts(transformers);
+    renderRankChart(transformers);
+    renderShiftTable(transformers);
+    renderDetailTables(transformers, risks);
+}
+
+/* =========================================================
+   RISK ENGINE
+========================================================= */
+function sevRank(s){ return {crit:3, high:2, med:1, ok:0}[s] || 0; }
+
+function computeRisks(txs){
+    let risks = [];
+
+    txs.forEach(t=>{
+        // Overload
+        if(t.loadPct >= CFG.overloadCrit){
+            risks.push(mkRisk(t,'overload','crit', t.loadPct.toFixed(1)+'%', '≥ '+CFG.overloadCrit+'%'));
+        } else if(t.loadPct >= CFG.overloadHigh){
+            risks.push(mkRisk(t,'overload','high', t.loadPct.toFixed(1)+'%', '≥ '+CFG.overloadHigh+'%'));
+        }
+        // Unbalance
+        if(t.unbalance >= CFG.unbCrit){
+            risks.push(mkRisk(t,'unbalance','crit', t.unbalance.toFixed(1)+'%', '≥ '+CFG.unbCrit+'%'));
+        } else if(t.unbalance >= CFG.unbHigh){
+            risks.push(mkRisk(t,'unbalance','high', t.unbalance.toFixed(1)+'%', '≥ '+CFG.unbHigh+'%'));
+        }
+        // Neutral
+        if(t.neutralPct >= CFG.neutralHigh*1.8){
+            risks.push(mkRisk(t,'neutral','crit', Math.round(t.neutral)+' A ('+t.neutralPct.toFixed(0)+'%)', '≥ '+(CFG.neutralHigh*1.8).toFixed(0)+'%'));
+        } else if(t.neutralPct >= CFG.neutralHigh){
+            risks.push(mkRisk(t,'neutral','high', Math.round(t.neutral)+' A ('+t.neutralPct.toFixed(0)+'%)', '≥ '+CFG.neutralHigh+'%'));
+        }
+        // Feeders (main cables, 300mm² class — configurable)
+        t.feeders.forEach(f=>{
+            if(f.loadPct >= CFG.feederCritPct){
+                risks.push(mkRisk(t,'feeder','crit', Math.round(f.maxLoad)+' A ('+f.feeder+', '+f.loadPct.toFixed(0)+'%)', '≥ '+CFG.feederCritPct+'%'));
+            } else if(f.loadPct >= CFG.feederWarnPct){
+                risks.push(mkRisk(t,'feeder','high', Math.round(f.maxLoad)+' A ('+f.feeder+', '+f.loadPct.toFixed(0)+'%)', '≥ '+CFG.feederWarnPct+'%'));
+            }
+        });
+    });
+
+    risks.sort((a,b)=> sevRank(b.severity)-sevRank(a.severity));
+    return risks;
+}
+function mkRisk(t, type, severity, value, threshold){
+    const lib = RISK_LIB[type];
+    return {
+        ss:t.ssNum, area:t.area, tName:t.tName, type, label:lib.label, severity,
+        value, threshold, cause:lib.cause, remedy:lib.remedy
+    };
+}
+function sevBadge(sev){
+    const map = {crit:['crit','حرج'], high:['high','مرتفع'], med:['med','متوسط'], ok:['ok','طبيعي']};
+    const [cls,txt] = map[sev] || map.ok;
+    return `<span class="sev ${cls}">${txt}</span>`;
+}
+
+/* =========================================================
+   KPIs
+========================================================= */
+function updateKPIs(txs, risks){
+    const total = txs.length;
+    const avgLoad = txs.reduce((s,t)=>s+t.loadPct,0)/total;
+    const maxLoad = Math.max(...txs.map(t=>t.loadPct));
+    const crit = risks.filter(r=>r.severity==='crit').length;
+    const high = risks.filter(r=>r.severity==='high').length;
+    const underused = txs.filter(t=>t.loadPct < CFG.shiftAvailable).length;
+    const areas = new Set(txs.map(t=>t.area)).size;
+
+    const allFeeders = txs.flatMap(t=>t.feeders);
+    const maxCablePct = allFeeders.length ? Math.max(...allFeeders.map(f=>f.loadPct)) : 0;
+    const highCables = allFeeders.filter(f=>f.loadPct >= CFG.feederWarnPct).length;
+
+    const cards = [
+        {t:'إجمالي المحولات المُقاسة', v:total, sub: areas>1 ? (areas+' منطقة') : '', cls:''},
+        {t:'متوسط تحميل الشبكة', v:avgLoad.toFixed(1)+'%', sub:'', cls: avgLoad>=CFG.overloadHigh?'warn':'ok'},
+        {t:'أعلى نسبة تحميل مسجّلة', v:maxLoad.toFixed(1)+'%', sub:'', cls: maxLoad>=CFG.overloadCrit?'crit':(maxLoad>=CFG.overloadHigh?'warn':'ok')},
+        {t:'أعلى تحميل على كيبل واحد', v:maxCablePct.toFixed(0)+'%', sub:'من سعة '+CFG.feederRated+' A ('+CFG.cableSection+' مم²)', cls: maxCablePct>=CFG.feederCritPct?'crit':(maxCablePct>=CFG.feederWarnPct?'warn':'ok')},
+        {t:'كيبلات تجاوزت حد التحذير', v:highCables, sub:'من أصل '+allFeeders.length+' كيبل رئيسي', cls: highCables>0?'warn':'ok'},
+        {t:'حالات حرجة', v:crit, sub:'تتطلب تدخلاً فورياً', cls: crit>0?'crit':'ok'},
+        {t:'حالات مرتفعة الخطورة', v:high, sub:'تحتاج متابعة قريبة', cls: high>0?'warn':'ok'},
+        {t:'محولات بطاقة متاحة (مناورة)', v:underused, sub:'أقل من '+CFG.shiftAvailable+'% تحميل', cls:''}
+    ];
+    document.getElementById('kpi-row').innerHTML = cards.map(c=>`
+        <div class="kpi ${c.cls}">
+            <h3>${c.t}</h3>
+            <div class="val">${c.v}</div>
+            <div class="sub">${c.sub}</div>
+        </div>`).join('');
+}
+
+/* =========================================================
+   RISK REGISTER TABLE
+========================================================= */
+function renderRiskRegister(risks){
+    document.getElementById('risk-count').innerText = risks.length + ' حالة';
+    if(!risks.length){
+        document.getElementById('risk-body').innerHTML = `<tr class="empty-row"><td colspan="8">لا توجد مخالفات لمعايير التحميل أو الاتزان أو سعة المغذيات ضمن البيانات المدخلة ✅</td></tr>`;
+        return;
+    }
+    document.getElementById('risk-body').innerHTML = risks.map(r=>`
+        <tr>
+            <td>${sevBadge(r.severity)}</td>
+            <td class="num">${r.ss}</td>
+            <td>${r.area}</td>
+            <td>${r.tName}</td>
+            <td>${r.label}</td>
+            <td class="num">${r.value}</td>
+            <td class="wrap">${r.cause}</td>
+            <td class="wrap"><b style="color:var(--accent)">✔</b> ${r.remedy}</td>
+        </tr>`).join('');
+}
+
+/* =========================================================
+   ANALOG GAUGE CLUSTER (signature visual)
+========================================================= */
+function gaugeColor(pct){
+    if(pct >= CFG.overloadCrit) return getCss('--crit');
+    if(pct >= CFG.overloadHigh) return getCss('--watch');
+    return getCss('--ok');
+}
+function getCss(v){ return getComputedStyle(document.body).getPropertyValue(v).trim(); }
+
+function renderGauges(txs){
+    charts.gauges.forEach(c=>c && c.destroy());
+    charts.gauges = [];
+
+    const top = [...txs].sort((a,b)=>b.loadPct-a.loadPct).slice(0,6);
+    document.getElementById('gauge-count').innerText = top.length + ' من ' + txs.length;
+
+    const grid = document.getElementById('gauge-grid');
+    grid.innerHTML = top.map((t,i)=>`
+        <div class="gauge-card">
+            <span class="gauge-badge" style="background:${gaugeColor(t.loadPct)}22;color:${gaugeColor(t.loadPct)}">${t.size} ك.ف.أ</span>
+            <div class="ss">SS ${t.ssNum} · ${t.area}</div>
+            <div class="tname">${t.tName}</div>
+            <div class="gauge-wrap">
+                <canvas id="gauge-${i}"></canvas>
+                <div class="gauge-num" style="color:${gaugeColor(t.loadPct)}">${t.loadPct.toFixed(0)}%</div>
+            </div>
+            <div class="gauge-lbl">من السعة الاسمية</div>
+            <div class="phase-mini">
+                <span><i class="dot r"></i>${Math.round(t.r)}A</span>
+                <span><i class="dot y"></i>${Math.round(t.y)}A</span>
+                <span><i class="dot b"></i>${Math.round(t.b)}A</span>
+            </div>
+        </div>`).join('');
+
+    top.forEach((t,i)=>{
+        const val = Math.min(t.loadPct, 130);
+        const color = gaugeColor(t.loadPct);
+        const ctx = document.getElementById('gauge-'+i);
+        const c = new Chart(ctx, {
+            type:'doughnut',
+            data:{ datasets:[{ data:[val, 130-val], backgroundColor:[color, getCss('--panel-border')], borderWidth:0 }] },
+            options:{
+                rotation:-90, circumference:180, cutout:'76%',
+                responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+                events:[]
+            }
+        });
+        charts.gauges.push(c);
+    });
+}
+
+/* =========================================================
+   CABLE / FEEDER LOAD MAP — per-cable visibility (U1..U6)
+========================================================= */
+function cableCellClass(pct){
+    if(pct >= CFG.feederCritPct) return 'crit';
+    if(pct >= CFG.feederWarnPct) return 'warn';
+    return 'ok';
+}
+function cableCellHtml(f){
+    if(!f || (f.maxLoad||0) <= 0) return `<span class="cable-cell dim">—</span>`;
+    const cls = cableCellClass(f.loadPct);
+    return `<span class="cable-cell ${cls}" title="${f.feeder}: ${Math.round(f.maxLoad)} A (${f.loadPct.toFixed(0)}% من ${CFG.feederRated} A)">
+        ${Math.round(f.maxLoad)}A<small>${f.loadPct.toFixed(0)}%</small></span>`;
+}
+function renderCableMap(txs){
+    document.getElementById('cable-rated-lbl').innerText = CFG.feederRated;
+    const showAll = document.getElementById('cable-show-all').checked;
+
+    const rows = showAll ? txs : txs.filter(t => t.feeders.some(f => f.loadPct >= CFG.feederWarnPct));
+    const highCableCount = txs.reduce((n,t)=> n + t.feeders.filter(f=>f.loadPct>=CFG.feederWarnPct).length, 0);
+    document.getElementById('cable-count').innerText = highCableCount + ' كيبل ≥ ' + CFG.feederWarnPct + '%';
+
+    const sorted = [...rows].sort((a,b)=>{
+        const am = Math.max(...a.feeders.map(f=>f.loadPct));
+        const bm = Math.max(...b.feeders.map(f=>f.loadPct));
+        return bm - am;
+    });
+
+    document.getElementById('table-cable-map').innerHTML = sorted.map(t=>{
+        const cells = t.feeders.map(f=> `<td>${cableCellHtml(f)}</td>`).join('');
+        const maxF = t.feeders.reduce((a,b)=> (b.loadPct>a.loadPct? b:a), t.feeders[0]);
+        return `<tr>
+            <td class="num">${t.ssNum}</td><td>${t.area}</td><td>${t.tName}</td>
+            ${cells}
+            <td>${sevBadge(maxF.loadPct>=CFG.feederCritPct?'crit':(maxF.loadPct>=CFG.feederWarnPct?'high':'ok'))} <span class="num">${maxF.feeder}</span></td>
+        </tr>`;
+    }).join('') || `<tr class="empty-row"><td colspan="10">لا توجد كيبلات تتجاوز نسبة ${CFG.feederWarnPct}% من سعتها — فعّل "عرض كل المحولات" لرؤية الخريطة كاملة</td></tr>`;
+}
+document.getElementById('cable-show-all').addEventListener('change', ()=>{
+    if(globalTx.length) renderCableMap(globalTx);
+});
+
+/* =========================================================
+   CHARTS
+========================================================= */
+function renderCharts(txs){
+    const isLight = document.body.classList.contains('light');
+    const textColor = getCss('--muted');
+    const gridColor = getCss('--panel-border');
+
+    if(charts.pie) charts.pie.destroy();
+    const normal = txs.filter(t=>t.loadPct < CFG.overloadHigh*0.7).length;
+    const medium = txs.filter(t=>t.loadPct >= CFG.overloadHigh*0.7 && t.loadPct < CFG.overloadHigh).length;
+    const high   = txs.filter(t=>t.loadPct >= CFG.overloadHigh && t.loadPct < CFG.overloadCrit).length;
+    const crit   = txs.filter(t=>t.loadPct >= CFG.overloadCrit).length;
+    charts.pie = new Chart(document.getElementById('pieChart'), {
+        type:'doughnut',
+        data:{ labels:['طبيعي','متوسط','مرتفع','حرج'],
+               datasets:[{ data:[normal,medium,high,crit], backgroundColor:[getCss('--ok'),getCss('--warn'),getCss('--watch'),getCss('--crit')], borderWidth:0 }] },
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{position:'bottom', labels:{color:textColor}}, title:{display:true, text:'توزيع حالة تحميل المحولات', color:textColor, font:{size:14}} } }
+    });
+
+    if(charts.radar) charts.radar.destroy();
+    const top3 = [...txs].sort((a,b)=>b.loadPct-a.loadPct).slice(0,3);
+    const radarColors = [
+        {bg:'rgba(239,75,95,.2)', bd:getCss('--crit')},
+        {bg:'rgba(244,180,0,.2)', bd:getCss('--warn')},
+        {bg:'rgba(34,211,238,.2)', bd:getCss('--accent')}
+    ];
+    charts.radar = new Chart(document.getElementById('radarChart'), {
+        type:'radar',
+        data:{ labels:['التحميل %','عدم الاتزان %','النيوترال %'],
+               datasets: top3.map((t,i)=>({ label:`${t.ssNum} - ${t.tName}`,
+                   data:[Math.min(t.loadPct,150), Math.min(t.unbalance,150), Math.min(t.neutralPct,150)],
+                   backgroundColor:radarColors[i].bg, borderColor:radarColors[i].bd, pointBackgroundColor:radarColors[i].bd, borderWidth:2 })) },
+        options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ r:{ angleLines:{color:gridColor}, grid:{color:gridColor}, pointLabels:{color:textColor, font:{size:12}}, ticks:{display:false} } },
+            plugins:{ legend:{position:'bottom', labels:{color:textColor, font:{size:10}}}, title:{display:true, text:'مقارنة أخطر 3 محولات', color:textColor, font:{size:14}} } }
+    });
+
+    if(charts.size) charts.size.destroy();
+    const sizes = [...new Set(txs.map(t=>t.size))].sort((a,b)=>a-b);
+    const avgBySize = sizes.map(s=>{
+        const group = txs.filter(t=>t.size===s);
+        return group.reduce((a,t)=>a+t.loadPct,0)/group.length;
+    });
+    charts.size = new Chart(document.getElementById('sizeChart'), {
+        type:'bar',
+        data:{ labels:sizes.map(s=>s+' ك.ف.أ'), datasets:[{ label:'متوسط التحميل %', data:avgBySize,
+               backgroundColor: sizes.map(s=>s>=1250?getCss('--accent'):getCss('--b-phase')), borderRadius:6 }] },
+        options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ticks:{color:textColor}, grid:{display:false}}, y:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true} },
+            plugins:{ legend:{display:false}, title:{display:true, text:'متوسط التحميل حسب سعة المحول', color:textColor, font:{size:14}} } }
+    });
+}
+
+function renderRankChart(txs){
+    if(charts.rank) charts.rank.destroy();
+    const textColor = getCss('--muted');
+    const gridColor = getCss('--panel-border');
+    const sorted = [...txs].sort((a,b)=>b.loadPct-a.loadPct).slice(0,15);
+    charts.rank = new Chart(document.getElementById('rankChart'), {
+        type:'bar',
+        data:{ labels: sorted.map(t=>`${t.ssNum}-${t.tName}`),
+               datasets:[{ label:'نسبة التحميل %', data: sorted.map(t=>t.loadPct.toFixed(1)),
+                   backgroundColor: sorted.map(t=> t.loadPct>=CFG.overloadCrit?getCss('--crit') : t.loadPct>=CFG.overloadHigh?getCss('--watch') : getCss('--ok')),
+                   borderRadius:5 }] },
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor, font:{family:"'JetBrains Mono',monospace", size:11}}, grid:{display:false}} },
+            plugins:{ legend:{display:false} } }
+    });
+}
+
+/* =========================================================
+   SHIFT SUGGESTIONS
+========================================================= */
+function renderShiftTable(txs){
+    document.getElementById('shift-method-high').innerText = CFG.overloadHigh;
+    document.getElementById('shift-method-low').innerText = CFG.shiftAvailable;
+
+    const overloaded = txs.filter(t=>t.loadPct >= CFG.overloadHigh);
+    const available = txs.filter(t=>t.loadPct < CFG.shiftAvailable);
+    let html = '';
+
+    [...new Set(overloaded.map(t=>t.ssNum+'|'+t.area))].forEach(key=>{
+        const [ss, area] = key.split('|');
+        const ovTxs = overloaded.filter(t=>t.ssNum===ss && t.area===area);
+        const avTxs = available.filter(t=>t.ssNum===ss && t.area===area);
+        if(avTxs.length===0) return;
+        ovTxs.forEach(ov=>{
+            avTxs.forEach(av=>{
+                const maxF = ov.feeders.reduce((a,b)=>a.maxLoad>b.maxLoad?a:b);
+                const minF = av.feeders.reduce((a,b)=>a.maxLoad<b.maxLoad?a:b);
+                const projected = Math.max(ov.loadPct - (maxF.maxLoad/ov.ratedI*100), 0);
+                html += `<tr>
+                    <td class="num">${ss}</td><td>${area}</td>
+                    <td><span class="sev crit">${ov.tName} — ${ov.loadPct.toFixed(1)}%</span></td>
+                    <td><span class="sev ok">${av.tName} — ${av.loadPct.toFixed(1)}%</span></td>
+                    <td class="wrap">فصل الكيبل الأعلى تحميلاً <b>${maxF.feeder}</b> (${Math.round(maxF.maxLoad)}A، ${maxF.loadPct.toFixed(0)}% من سعته) من ${ov.tName}، وربطه بدلاً من الكيبل الأقل تحميلاً <b>${minF.feeder}</b> (${Math.round(minF.maxLoad)}A، ${minF.loadPct.toFixed(0)}%) في ${av.tName}</td>
+                    <td>خفض تقديري لـ${ov.tName} إلى ~${projected.toFixed(0)}%</td>
+                </tr>`;
+            });
+        });
+    });
+    document.getElementById('table-shifts').innerHTML = html || `<tr class="empty-row"><td colspan="6">لا توجد فرص مناورة داخلية متاحة ضمن نفس المحطة حالياً (لا يوجد محول محمّل ≥ ${CFG.overloadHigh}% مع محول آخر أقل من ${CFG.shiftAvailable}% في نفس المحطة)</td></tr>`;
+}
+
+/* =========================================================
+   DETAIL TABLES
+========================================================= */
+function renderDetailTables(txs, risks){
+    // High feeders (cables)
+    let feederRows = [];
+    txs.forEach(t=> t.feeders.forEach(f=>{
+        if(f.loadPct >= CFG.feederWarnPct) feederRows.push({t,f});
+    }));
+    feederRows.sort((a,b)=>b.f.loadPct - a.f.loadPct);
+    document.getElementById('table-high-feeders').innerHTML = feederRows.slice(0,12).map(({t,f})=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
+        <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td><td>${sevBadge(f.loadPct>=CFG.feederCritPct?'crit':'high')}</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="7">جميع الكيبلات (${CFG.cableSection} مم²) ضمن الحد المسموح</td></tr>`;
+
+    // Overloaded
+    const ov = [...txs].filter(t=>t.loadPct>=CFG.overloadHigh*0.7).sort((a,b)=>b.loadPct-a.loadPct).slice(0,8);
+    document.getElementById('table-overloaded').innerHTML = ov.map(t=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
+        <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':(t.loadPct>=CFG.overloadHigh?'high':'med'))}</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="5">الشبكة ضمن الحدود الطبيعية</td></tr>`;
+
+    // Unbalance
+    const unb = [...txs].filter(t=>t.unbalance>=1).sort((a,b)=>b.unbalance-a.unbalance).slice(0,8);
+    document.getElementById('table-unbalance').innerHTML = unb.map(t=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.unbalance.toFixed(1)}%</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="4">لا توجد بيانات كافية</td></tr>`;
+
+    // Neutral
+    const neu = [...txs].filter(t=>t.neutral>0).sort((a,b)=>b.neutral-a.neutral).slice(0,8);
+    document.getElementById('table-neutral').innerHTML = neu.map(t=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${Math.round(t.neutral)}</td><td class="num">${t.neutralPct.toFixed(0)}%</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="5">لا توجد بيانات كافية</td></tr>`;
+}
+
+/* =========================================================
+   REFERENCE / REMEDIATION GUIDE (static, educational)
+========================================================= */
+(function buildReferenceGuide(){
+    const items = [
+        {ic:'🔥', t:'التحميل الزائد على المحول', lib:RISK_LIB.overload, lim:`الحد المرتفع: ${CFG.overloadHigh}% — الحد الحرج: ${CFG.overloadCrit}% من السعة الاسمية`},
+        {ic:'⚖️', t:'عدم اتزان الأحمال بين الفازات', lib:RISK_LIB.unbalance, lim:`الحد المرتفع: ${CFG.unbHigh}% — الحد الحرج: ${CFG.unbCrit}%`},
+        {ic:'🧵', t:'ارتفاع تيار النيوترال', lib:RISK_LIB.neutral, lim:`تنبيه عند تجاوز ${CFG.neutralHigh}% من متوسط تيار الفازات`},
+        {ic:'🔌', t:'تجاوز سعة الكيبل الرئيسي (المغذي)', lib:RISK_LIB.feeder, lim:`كيبل ${CFG.cableSection} مم² بسعة ${CFG.feederRated} A — تحذير عند ${CFG.feederWarnPct}% — حرج عند ${CFG.feederCritPct}%`}
+    ];
+    document.getElementById('ref-grid').innerHTML = items.map((it,idx)=>`
+        <details class="ref-card" ${idx===0?'open':''}>
+            <summary>${it.ic} ${it.t} <span class="chev">›</span></summary>
+            <div class="body">
+                <div><b>السبب المحتمل:</b> ${it.lib.cause}</div>
+                <div style="margin-top:8px;"><b>الخطورة الفنية:</b> ${it.lib.risk}</div>
+                <div style="margin-top:8px;"><b>طريقة المعالجة:</b> ${it.lib.remedy}</div>
+                <span class="lim">${it.lim}</span>
+            </div>
+        </details>`).join('');
+})();
+</script>
+</body>
+</html>

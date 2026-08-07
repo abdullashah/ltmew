@@ -1466,21 +1466,22 @@ async function handleWorkbookFilesAsync(fileList){
 document.getElementById('office-select').addEventListener('change', ()=>{ populateAreaSelect(); runAnalysis(); });
 
 /* =========================================================
-   PRESET OFFICES — hosted directly on the site (data/*.xlsx)
+   PRESET OFFICES — live fetch from Google Sheets via Netlify Function
+   (falls back to the bundled data/*.xlsx snapshot if the function fails)
 ========================================================= */
 const PRESET_AREAS = [
-    { file:'data/asima.xlsx',     office:'العاصمة' },
-    { file:'data/hawalli.xlsx',   office:'حولي' },
-    { file:'data/farwaniya.xlsx', office:'الفروانية' },
-    { file:'data/ahmadi.xlsx',    office:'الأحمدي' },
-    { file:'data/jahra.xlsx',     office:'الجهراء' },
-    { file:'data/mubarak.xlsx',   office:'مبارك الكبير' }
+    { file:'/.netlify/functions/get-sheet?office=asima',     fallback:'data/asima.xlsx',     office:'العاصمة' },
+    { file:'/.netlify/functions/get-sheet?office=hawalli',   fallback:'data/hawalli.xlsx',   office:'حولي' },
+    { file:'/.netlify/functions/get-sheet?office=farwaniya', fallback:'data/farwaniya.xlsx', office:'الفروانية' },
+    { file:'/.netlify/functions/get-sheet?office=ahmadi',    fallback:'data/ahmadi.xlsx',    office:'الأحمدي' },
+    { file:'/.netlify/functions/get-sheet?office=jahra',     fallback:'data/jahra.xlsx',     office:'الجهراء' },
+    { file:'/.netlify/functions/get-sheet?office=mubarak',   fallback:'data/mubarak.xlsx',   office:'مبارك الكبير' }
 ];
 function renderPresetButtons(){
     const wrap = document.getElementById('preset-btns');
     if(!wrap) return;
     wrap.innerHTML = PRESET_AREAS.map(a=>
-        `<button class="btn" onclick="loadPresetOffice('${a.file}','${a.office}')">📍 ${a.office}</button>`
+        `<button class="btn" onclick="loadPresetOffice('${a.office}')">📍 ${a.office}</button>`
     ).join('');
 }
 renderPresetButtons();
@@ -1492,10 +1493,23 @@ async function fetchWorkbook(url){
     return XLSX.read(new Uint8Array(buf), {type:'array'});
 }
 
-async function loadPresetOffice(url, office){
+/* Tries the live Google Sheets export first; falls back to the bundled
+   static snapshot in data/ if the live function is unreachable/not deployed. */
+async function fetchPresetWorkbook(area){
+    try{
+        return await fetchWorkbook(area.file);
+    }catch(err){
+        if(!area.fallback) throw err;
+        return await fetchWorkbook(area.fallback);
+    }
+}
+
+async function loadPresetOffice(office){
+    const area = PRESET_AREAS.find(a=> a.office === office);
+    if(!area) return;
     setDropStatus('⏳ جارٍ تحميل بيانات ' + office + ' من الموقع ...');
     try{
-        loadedOffices[office] = await fetchWorkbook(url);
+        loadedOffices[office] = await fetchPresetWorkbook(area);
         populateOfficeSelect();
         document.getElementById('office-select').value = office;
         populateAreaSelect();
@@ -1510,7 +1524,7 @@ async function loadAllPresetOffices(){
     setDropStatus('⏳ جارٍ تحميل بيانات كل المحافظات من الموقع ...');
     const errors = [];
     for(const a of PRESET_AREAS){
-        try{ loadedOffices[a.office] = await fetchWorkbook(a.file); }
+        try{ loadedOffices[a.office] = await fetchPresetWorkbook(a); }
         catch(err){ errors.push(a.office + ': ' + err.message); }
     }
     populateOfficeSelect();

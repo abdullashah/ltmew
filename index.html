@@ -133,6 +133,30 @@
     .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
     @media (max-width:900px){ .grid-2,.grid-3{grid-template-columns:1fr;} }
 
+    /* ---------- Right-side tab navigation ---------- */
+    .dash-layout{display:flex; gap:18px; align-items:flex-start;}
+    .dash-content{flex:1; min-width:0;}
+    .dash-tabs{
+        flex:0 0 190px; position:sticky; top:16px; display:flex; flex-direction:column; gap:6px;
+        background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius); padding:14px;
+    }
+    .dash-tab{
+        background:var(--panel-2); color:var(--text); border:1px solid var(--panel-border);
+        padding:11px 14px; border-radius:9px; cursor:pointer; font-family:var(--body); font-size:.9em;
+        font-weight:600; text-align:start; display:flex; align-items:center; gap:8px; transition:.15s;
+    }
+    .dash-tab:hover{border-color:var(--accent); color:var(--accent);}
+    .dash-tab.active{background:var(--accent); color:#04222b; border-color:var(--accent);}
+    .dash-tab-filter{border-top:1px solid var(--panel-border); margin-top:6px; padding-top:12px;}
+    .dash-tab-filter label{display:block; font-size:.78em; color:var(--muted); font-weight:600; margin-bottom:6px;}
+    .dash-tab-filter select{width:100%;}
+    @media (max-width:900px){
+        .dash-layout{flex-direction:column;}
+        .dash-tabs{flex-direction:row; flex-wrap:wrap; position:static; width:100%;}
+        .dash-tab{flex:1 1 auto;}
+        .dash-tab-filter{flex:1 1 100%; border-top:none; margin-top:0; padding-top:0;}
+    }
+
     /* ---------- Gauges (signature element) ---------- */
     .gauge-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px;}
     .gauge-card{
@@ -386,6 +410,9 @@
         .report-meta{background:#f5f5f5 !important;}
         table{font-size:.8em;}
         .sev{border:1px solid currentColor;}
+        .dash-tabs{display:none !important;}
+        .dash-layout{display:block !important;}
+        .dash-pane{display:block !important;}
     }
 </style>
 </head>
@@ -507,129 +534,158 @@
 </div>
 
 <div id="dashboard" style="display:none;">
-
-    <div class="kpi-row" id="kpi-row"></div>
-
-    <!-- Analog gauge cluster #1 — transformers -->
-    <div class="panel">
-        <div class="panel-head">
-            <h2>🎛️ لوحة العدادات (١) — أخطر المحولات تحميلاً</h2>
-            <span class="count" id="gauge-count">0</span>
+<div class="dash-layout">
+    <nav class="dash-tabs" id="dash-tabs">
+        <button class="dash-tab active" data-tab="overview" onclick="switchDashTab('overview')">📊 نظرة عامة</button>
+        <button class="dash-tab" data-tab="transformers" onclick="switchDashTab('transformers')">🔌 المحولات</button>
+        <button class="dash-tab" data-tab="cables" onclick="switchDashTab('cables')">🧵 الكيبلات</button>
+        <button class="dash-tab" data-tab="risk" onclick="switchDashTab('risk')">🛡️ المخاطر</button>
+        <div class="dash-tab-filter">
+            <label for="feeder-type-filter">نوع الخط (المغذي)</label>
+            <select id="feeder-type-filter" onchange="runAnalysis()">
+                <option value="__all__">الكل</option>
+                <option value="U1">U1</option>
+                <option value="U2">U2</option>
+                <option value="U3">U3</option>
+                <option value="U4">U4</option>
+                <option value="U5">U5</option>
+                <option value="U6">U6</option>
+            </select>
         </div>
-        <div class="gauge-grid" id="gauge-grid"></div>
+    </nav>
+
+    <div class="dash-content">
+        <div class="dash-pane" data-pane="overview">
+            <div class="kpi-row" id="kpi-row"></div>
+
+            <div class="panel">
+                <div class="panel-head"><h2>📈 ترتيب المحولات حسب نسبة التحميل</h2></div>
+                <div class="chart-box" style="height:340px;"><canvas id="rankChart"></canvas></div>
+            </div>
+
+            <!-- Load shifting -->
+            <div class="panel">
+                <div class="panel-head"><h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2></div>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em; line-height:1.9;">
+                    <b style="color:var(--text)">طريقة العمل:</b> يفحص النظام كل محطة على حدة. إذا وُجد بها محول محمّل بنسبة
+                    ≥ <span id="shift-method-high">80</span>% من سعته، يبحث عن محول آخر في نفس المحطة محمّل بأقل من
+                    <span id="shift-method-low">60</span>%. عند توفر الشرطين، يقترح النظام فصل أعلى كيبل تحميلاً (الأكثر تياراً) من المحول
+                    المجهد وربطه على أقل كيبل تحميلاً في المحول المتاح، لتخفيف الضغط عن الأول دون تجاوز سعة الثاني.
+                </p>
+                <div class="tbl-wrap">
+                    <table>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                        <tbody id="table-shifts"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="panel">
+                <div class="panel-head"><h2>📊 التحليل الإحصائي</h2></div>
+                <div class="grid-3">
+                    <div class="chart-box"><canvas id="pieChart"></canvas></div>
+                    <div class="chart-box"><canvas id="radarChart"></canvas></div>
+                    <div class="chart-box"><canvas id="sizeChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-pane" data-pane="transformers" style="display:none;">
+            <!-- Analog gauge cluster #1 — transformers -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>🎛️ لوحة العدادات (١) — أخطر المحولات تحميلاً</h2>
+                    <span class="count" id="gauge-count">0</span>
+                </div>
+                <div class="gauge-grid" id="gauge-grid"></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="panel">
+                    <div class="panel-head"><h2 style="color:var(--crit)">🔴 أخطر المحولات تحميلاً</h2></div>
+                    <div class="tbl-wrap"><table>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الحمل %</th><th>الحالة</th></tr></thead>
+                        <tbody id="table-overloaded"></tbody>
+                    </table></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-head"><h2>⚠️ أعلى تيارات النيوترال</h2></div>
+                    <div class="tbl-wrap"><table>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>النيوترال (A)</th><th>% من متوسط الفاز</th></tr></thead>
+                        <tbody id="table-neutral"></tbody>
+                    </table></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-pane" data-pane="cables" style="display:none;">
+            <!-- Analog gauge cluster #2 — cables -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>🎛️ لوحة العدادات (٢) — أخطر الكيبلات تحميلاً</h2>
+                    <span class="count" id="cable-gauge-count">0</span>
+                </div>
+                <div class="gauge-grid" id="cable-gauge-grid"></div>
+            </div>
+
+            <!-- Cable / feeder load map (per-cable visibility) -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>🧵 خريطة تحميل الكيبلات الرئيسية (U1–U6)</h2>
+                    <span class="count" id="cable-count">0 كيبل مرتفع</span>
+                </div>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">
+                    كل محول يغذّي المستهلكين عبر ستة كيبلات رئيسية (300 مم² — سعة ~<span id="cable-rated-lbl">300</span> أمبير). الخلية الملوّنة تمثّل أعلى تيار فاز مسجّل على ذلك الكيبل كنسبة من سعته. استخدم فلتر "نوع الخط" في القائمة الجانبية لتضييق جدول الكيبلات المتجاوزة على مغذٍ معيّن.
+                </p>
+                <label style="display:flex; align-items:center; gap:8px; font-size:.85em; color:var(--muted); margin-bottom:12px; cursor:pointer; width:fit-content;">
+                    <input type="checkbox" id="cable-show-all" style="accent-color:var(--accent);"> عرض كل المحولات (وليس المرتفعة فقط)
+                </label>
+                <div class="tbl-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th>
+                            <th>U1</th><th>U2</th><th>U3</th><th>U4</th><th>U5</th><th>U6</th><th>أعلى كيبل</th>
+                        </tr></thead>
+                        <tbody id="table-cable-map"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head"><h2 style="color:var(--crit)">⚡ كيبلات (مغذيات) تجاوزت الحد المسموح</h2></div>
+                <div class="tbl-wrap"><table>
+                    <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من سعة الكيبل</th><th>الحالة</th></tr></thead>
+                    <tbody id="table-high-feeders"></tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <div class="dash-pane" data-pane="risk" style="display:none;">
+            <!-- Risk Register: signature analytical output -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>🛡️ سجل المخاطر الفنية <span class="count" id="risk-count">0 حالة</span></h2>
+                </div>
+                <div class="tbl-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>الخطورة</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
+                            <th>القيمة المقاسة</th><th>السبب المرجّح</th><th>إجراء المعالجة المقترح</th>
+                        </tr></thead>
+                        <tbody id="risk-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reference guide -->
+            <div class="panel">
+                <div class="panel-head"><h2>📘 دليل المخاطر الفنية العامة وطرق المعالجة</h2></div>
+                <div class="ref-grid" id="ref-grid"></div>
+            </div>
+        </div>
     </div>
-
-    <!-- Analog gauge cluster #2 — cables -->
-    <div class="panel">
-        <div class="panel-head">
-            <h2>🎛️ لوحة العدادات (٢) — أخطر الكيبلات تحميلاً</h2>
-            <span class="count" id="cable-gauge-count">0</span>
-        </div>
-        <div class="gauge-grid" id="cable-gauge-grid"></div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-head"><h2>📈 ترتيب المحولات حسب نسبة التحميل</h2></div>
-        <div class="chart-box" style="height:340px;"><canvas id="rankChart"></canvas></div>
-    </div>
-
-    <!-- Load shifting -->
-    <div class="panel">
-        <div class="panel-head"><h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2></div>
-        <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em; line-height:1.9;">
-            <b style="color:var(--text)">طريقة العمل:</b> يفحص النظام كل محطة على حدة. إذا وُجد بها محول محمّل بنسبة
-            ≥ <span id="shift-method-high">80</span>% من سعته، يبحث عن محول آخر في نفس المحطة محمّل بأقل من
-            <span id="shift-method-low">60</span>%. عند توفر الشرطين، يقترح النظام فصل أعلى كيبل تحميلاً (الأكثر تياراً) من المحول
-            المجهد وربطه على أقل كيبل تحميلاً في المحول المتاح، لتخفيف الضغط عن الأول دون تجاوز سعة الثاني.
-        </p>
-        <div class="tbl-wrap">
-            <table>
-                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
-                <tbody id="table-shifts"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Risk Register: signature analytical output -->
-    <div class="panel">
-        <div class="panel-head">
-            <h2>🛡️ سجل المخاطر الفنية <span class="count" id="risk-count">0 حالة</span></h2>
-        </div>
-        <div class="tbl-wrap">
-            <table>
-                <thead><tr>
-                    <th>الخطورة</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
-                    <th>القيمة المقاسة</th><th>السبب المرجّح</th><th>إجراء المعالجة المقترح</th>
-                </tr></thead>
-                <tbody id="risk-body"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Cable / feeder load map (new: per-cable visibility) -->
-    <div class="panel">
-        <div class="panel-head">
-            <h2>🧵 خريطة تحميل الكيبلات الرئيسية (U1–U6)</h2>
-            <span class="count" id="cable-count">0 كيبل مرتفع</span>
-        </div>
-        <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">
-            كل محول يغذّي المستهلكين عبر ستة كيبلات رئيسية (300 مم² — سعة ~<span id="cable-rated-lbl">300</span> أمبير). الخلية الملوّنة تمثّل أعلى تيار فاز مسجّل على ذلك الكيبل كنسبة من سعته.
-        </p>
-        <label style="display:flex; align-items:center; gap:8px; font-size:.85em; color:var(--muted); margin-bottom:12px; cursor:pointer; width:fit-content;">
-            <input type="checkbox" id="cable-show-all" style="accent-color:var(--accent);"> عرض كل المحولات (وليس المرتفعة فقط)
-        </label>
-        <div class="tbl-wrap">
-            <table>
-                <thead><tr>
-                    <th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th>
-                    <th>U1</th><th>U2</th><th>U3</th><th>U4</th><th>U5</th><th>U6</th><th>أعلى كيبل</th>
-                </tr></thead>
-                <tbody id="table-cable-map"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Charts -->
-    <div class="panel">
-        <div class="panel-head"><h2>📊 التحليل الإحصائي</h2></div>
-        <div class="grid-3">
-            <div class="chart-box"><canvas id="pieChart"></canvas></div>
-            <div class="chart-box"><canvas id="radarChart"></canvas></div>
-            <div class="chart-box"><canvas id="sizeChart"></canvas></div>
-        </div>
-    </div>
-
-    <!-- Detail tables -->
-    <div class="grid-2">
-        <div class="panel">
-            <div class="panel-head"><h2 style="color:var(--crit)">⚡ كيبلات (مغذيات) تجاوزت الحد المسموح</h2></div>
-            <div class="tbl-wrap"><table>
-                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من سعة الكيبل</th><th>الحالة</th></tr></thead>
-                <tbody id="table-high-feeders"></tbody>
-            </table></div>
-        </div>
-        <div class="panel">
-            <div class="panel-head"><h2 style="color:var(--crit)">🔴 أخطر المحولات تحميلاً</h2></div>
-            <div class="tbl-wrap"><table>
-                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الحمل %</th><th>الحالة</th></tr></thead>
-                <tbody id="table-overloaded"></tbody>
-            </table></div>
-        </div>
-        <div class="panel">
-            <div class="panel-head"><h2>⚠️ أعلى تيارات النيوترال</h2></div>
-            <div class="tbl-wrap"><table>
-                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>النيوترال (A)</th><th>% من متوسط الفاز</th></tr></thead>
-                <tbody id="table-neutral"></tbody>
-            </table></div>
-        </div>
-    </div>
-
-    <!-- Reference guide -->
-    <div class="panel">
-        <div class="panel-head"><h2>📘 دليل المخاطر الفنية العامة وطرق المعالجة</h2></div>
-        <div class="ref-grid" id="ref-grid"></div>
-    </div>
-
+</div>
 </div>
 
 <div id="letter-options">
@@ -835,6 +891,10 @@ function handleEmblemError(img){
 function toggleTheme(){
     document.body.classList.toggle('light');
     if(globalTx.length) renderCharts(globalTx);
+}
+function switchDashTab(tab){
+    document.querySelectorAll('.dash-tab').forEach(b=> b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.dash-pane').forEach(p=> p.style.display = (p.dataset.pane === tab) ? 'block' : 'none');
 }
 function toggleSettings(){
     const p = document.getElementById('settings-panel');
@@ -1940,16 +2000,19 @@ function renderShiftTable(txs){
    DETAIL TABLES
 ========================================================= */
 function renderDetailTables(txs, risks){
-    // High feeders (cables)
+    // High feeders (cables) — optionally narrowed to one feeder/line (U1-U6) via the sidebar filter
+    const feederFilterEl = document.getElementById('feeder-type-filter');
+    const feederFilter = feederFilterEl ? feederFilterEl.value : '__all__';
     let feederRows = [];
     txs.forEach(t=> t.feeders.forEach(f=>{
+        if(feederFilter !== '__all__' && f.feeder !== feederFilter) return;
         if(f.loadPct >= CFG.feederWarnPct) feederRows.push({t,f});
     }));
     feederRows.sort((a,b)=>b.f.loadPct - a.f.loadPct);
     document.getElementById('table-high-feeders').innerHTML = feederRows.slice(0,12).map(({t,f})=>`
         <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
         <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td><td>${sevBadge(f.loadPct>=CFG.feederCritPct?'crit':'high')}</td></tr>`
-    ).join('') || `<tr class="empty-row"><td colspan="8">جميع الكيبلات (${CFG.cableSection} مم²) ضمن الحد المسموح</td></tr>`;
+    ).join('') || `<tr class="empty-row"><td colspan="8">لا توجد كيبلات ${feederFilter!=='__all__' ? '('+feederFilter+') ' : ''}تجاوزت الحد المسموح ضمن هذا النطاق</td></tr>`;
 
     // Overloaded
     const ov = [...txs].filter(t=>t.loadPct>=CFG.overloadHigh*0.7).sort((a,b)=>b.loadPct-a.loadPct).slice(0,8);

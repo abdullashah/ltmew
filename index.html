@@ -625,6 +625,11 @@
                 <div class="gauge-grid" id="gauge-grid"></div>
             </div>
 
+            <div class="risk-summary" id="tx-summary"></div>
+            <div class="risk-filters">
+                <input type="text" id="tx-search" placeholder="🔍 بحث بالمحطة أو المنطقة أو المراقبة..." oninput="setTxSearch(this.value)">
+            </div>
+
             <div class="grid-2">
                 <div class="panel">
                     <div class="panel-head"><h2 style="color:var(--crit)">🔴 أخطر المحولات تحميلاً</h2></div>
@@ -632,13 +637,15 @@
                         <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الحمل %</th><th>الحالة</th></tr></thead>
                         <tbody id="table-overloaded"></tbody>
                     </table></div>
+                    <div class="risk-pagination" id="overloaded-pagination"></div>
                 </div>
                 <div class="panel">
                     <div class="panel-head"><h2>⚠️ أعلى تيارات النيوترال</h2></div>
                     <div class="tbl-wrap"><table>
-                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>النيوترال (A)</th><th>% من متوسط الفاز</th></tr></thead>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>النيوترال (A)</th><th>% من متوسط الفاز</th><th>الحالة</th></tr></thead>
                         <tbody id="table-neutral"></tbody>
                     </table></div>
+                    <div class="risk-pagination" id="neutral-pagination"></div>
                 </div>
             </div>
         </div>
@@ -651,6 +658,11 @@
                     <span class="count" id="cable-gauge-count">0</span>
                 </div>
                 <div class="gauge-grid" id="cable-gauge-grid"></div>
+            </div>
+
+            <div class="risk-summary" id="cables-summary"></div>
+            <div class="risk-filters">
+                <input type="text" id="cables-search" placeholder="🔍 بحث بالمحطة أو المنطقة أو المراقبة..." oninput="setCablesSearch(this.value)">
             </div>
 
             <!-- Cable / feeder load map (per-cable visibility) -->
@@ -674,6 +686,7 @@
                         <tbody id="table-cable-map"></tbody>
                     </table>
                 </div>
+                <div class="risk-pagination" id="cable-map-pagination"></div>
             </div>
 
             <div class="panel">
@@ -682,6 +695,7 @@
                     <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من سعة الكيبل</th><th>الحالة</th></tr></thead>
                     <tbody id="table-high-feeders"></tbody>
                 </table></div>
+                <div class="risk-pagination" id="high-feeders-pagination"></div>
             </div>
         </div>
 
@@ -1644,6 +1658,7 @@ function processWorkbookData(sheetsData){
     });
 
     globalTx = transformers;
+    resetTablePages();
     document.getElementById('empty-state').style.display = transformers.length ? 'none' : 'block';
     document.getElementById('dashboard').style.display = transformers.length ? 'block' : 'none';
     document.getElementById('report-toggle-btn').style.display = transformers.length ? 'inline-flex' : 'none';
@@ -1655,11 +1670,11 @@ function processWorkbookData(sheetsData){
     renderRiskRegister(risks);
     renderGauges(transformers);
     renderCableGauges(transformers);
-    renderCableMap(transformers);
+    renderCableMap();
     renderCharts(transformers);
     renderRankChart(transformers);
     renderShiftTable(transformers);
-    renderDetailTables(transformers, risks);
+    renderDetailTables();
 }
 
 /* =========================================================
@@ -2005,12 +2020,14 @@ function cableCellHtml(f){
     return `<span class="cable-cell ${cls}" title="${f.feeder}: ${Math.round(f.maxLoad)} A (${f.loadPct.toFixed(0)}% من ${CFG.feederRated} A)">
         ${Math.round(f.maxLoad)}A<small>${f.loadPct.toFixed(0)}%</small></span>`;
 }
-function renderCableMap(txs){
+function renderCableMap(){
     document.getElementById('cable-rated-lbl').innerText = CFG.feederRated;
     const showAll = document.getElementById('cable-show-all').checked;
+    const q = cablesSearch.trim();
 
-    const rows = showAll ? txs : txs.filter(t => t.feeders.some(f => f.loadPct >= CFG.feederWarnPct));
-    const highCableCount = txs.reduce((n,t)=> n + t.feeders.filter(f=>f.loadPct>=CFG.feederWarnPct).length, 0);
+    let rows = showAll ? globalTx : globalTx.filter(t => t.feeders.some(f => f.loadPct >= CFG.feederWarnPct));
+    if(q) rows = rows.filter(t=> regMatches(t,q));
+    const highCableCount = globalTx.reduce((n,t)=> n + t.feeders.filter(f=>f.loadPct>=CFG.feederWarnPct).length, 0);
     document.getElementById('cable-count').innerText = highCableCount + ' كيبل ≥ ' + CFG.feederWarnPct + '%';
 
     const sorted = [...rows].sort((a,b)=>{
@@ -2019,7 +2036,11 @@ function renderCableMap(txs){
         return bm - am;
     });
 
-    document.getElementById('table-cable-map').innerHTML = sorted.map(t=>{
+    const totalPages = Math.max(1, Math.ceil(sorted.length / REG_PAGE_SIZE));
+    if(cableMapPage > totalPages) cableMapPage = totalPages;
+    const page = sorted.slice((cableMapPage-1)*REG_PAGE_SIZE, cableMapPage*REG_PAGE_SIZE);
+
+    document.getElementById('table-cable-map').innerHTML = page.map(t=>{
         const cells = t.feeders.map(f=> `<td>${cableCellHtml(f)}</td>`).join('');
         const maxF = t.feeders.reduce((a,b)=> (b.loadPct>a.loadPct? b:a), t.feeders[0]);
         return `<tr>
@@ -2027,10 +2048,13 @@ function renderCableMap(txs){
             ${cells}
             <td>${sevBadge(maxF.loadPct>=CFG.feederCritPct?'crit':(maxF.loadPct>=CFG.feederWarnPct?'high':'ok'))} <span class="num">${maxF.feeder}</span></td>
         </tr>`;
-    }).join('') || `<tr class="empty-row"><td colspan="11">لا توجد كيبلات تتجاوز نسبة ${CFG.feederWarnPct}% من سعتها — فعّل "عرض كل المحولات" لرؤية الخريطة كاملة</td></tr>`;
+    }).join('') || `<tr class="empty-row"><td colspan="11">${q ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد كيبلات تتجاوز نسبة '+CFG.feederWarnPct+'% من سعتها — فعّل "عرض كل المحولات" لرؤية الخريطة كاملة'}</td></tr>`;
+
+    renderSimplePagination('cable-map-pagination', sorted.length, cableMapPage, 'goCableMapPage');
 }
+function goCableMapPage(p){ cableMapPage = p; renderCableMap(); }
 document.getElementById('cable-show-all').addEventListener('change', ()=>{
-    if(globalTx.length) renderCableMap(globalTx);
+    if(globalTx.length){ cableMapPage = 1; renderCableMap(); }
 });
 
 /* =========================================================
@@ -2142,33 +2166,157 @@ function renderShiftTable(txs){
 /* =========================================================
    DETAIL TABLES
 ========================================================= */
-function renderDetailTables(txs, risks){
-    // High feeders (cables) — optionally narrowed to one feeder/line (U1-U6) via the sidebar filter
-    const feederFilterEl = document.getElementById('feeder-type-filter');
-    const feederFilter = feederFilterEl ? feederFilterEl.value : '__all__';
-    let feederRows = [];
-    txs.forEach(t=> t.feeders.forEach(f=>{
-        if(feederFilter !== '__all__' && f.feeder !== feederFilter) return;
-        if(f.loadPct >= CFG.feederWarnPct) feederRows.push({t,f});
-    }));
-    feederRows.sort((a,b)=>b.f.loadPct - a.f.loadPct);
-    document.getElementById('table-high-feeders').innerHTML = feederRows.slice(0,12).map(({t,f})=>`
-        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
-        <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td><td>${sevBadge(f.loadPct>=CFG.feederCritPct?'crit':'high')}</td></tr>`
-    ).join('') || `<tr class="empty-row"><td colspan="8">لا توجد كيبلات ${feederFilter!=='__all__' ? '('+feederFilter+') ' : ''}تجاوزت الحد المسموح ضمن هذا النطاق</td></tr>`;
+/* =========================================================
+   SHARED PAGINATION / SEARCH HELPERS
+   (transformers tab, cables tab — same pattern as the risk register)
+========================================================= */
+const REG_PAGE_SIZE = 15;
+function regMatches(t, q){
+    return String(t.ssNum).includes(q) || t.area.includes(q) || t.office.includes(q) || t.tName.includes(q);
+}
+function renderSimplePagination(elId, total, page, gotoFnName){
+    const el = document.getElementById(elId);
+    if(!el) return;
+    if(total <= REG_PAGE_SIZE){ el.innerHTML=''; return; }
+    const totalPages = Math.max(1, Math.ceil(total / REG_PAGE_SIZE));
+    el.innerHTML = `
+        <button class="btn" ${page<=1?'disabled':''} onclick="${gotoFnName}(${page-1})">‹ السابق</button>
+        <span>صفحة ${page} من ${totalPages} (${total})</span>
+        <button class="btn" ${page>=totalPages?'disabled':''} onclick="${gotoFnName}(${page+1})">التالي ›</button>`;
+}
+function resetTablePages(){
+    overloadPage = 1; neutralPage = 1; highFeedersPage = 1; cableMapPage = 1;
+}
 
-    // Overloaded
-    const ov = [...txs].filter(t=>t.loadPct>=CFG.overloadHigh*0.7).sort((a,b)=>b.loadPct-a.loadPct).slice(0,8);
-    document.getElementById('table-overloaded').innerHTML = ov.map(t=>`
+/* =========================================================
+   TRANSFORMERS TAB — summary + search + paginated tables
+========================================================= */
+let txSearch = '';
+let overloadPage = 1, neutralPage = 1;
+
+function renderTxSummary(){
+    const el = document.getElementById('tx-summary');
+    if(!el) return;
+    if(!globalTx.length){ el.innerHTML=''; return; }
+    const critOv = globalTx.filter(t=>t.loadPct>=CFG.overloadCrit).length;
+    const highOv = globalTx.filter(t=>t.loadPct>=CFG.overloadHigh && t.loadPct<CFG.overloadCrit).length;
+    const neutHigh = globalTx.filter(t=>t.neutralPct>=CFG.neutralHigh).length;
+    const avail = globalTx.filter(t=>t.loadPct<CFG.shiftAvailable).length;
+    const chips = [
+        {label:'إجمالي المحولات', v:globalTx.length, cls:''},
+        {label:'تحميل حرج', v:critOv, cls:'crit'},
+        {label:'تحميل مرتفع', v:highOv, cls:'high'},
+        {label:'نيوترال مرتفع', v:neutHigh, cls:'high'},
+        {label:'سعة متاحة (مناورة)', v:avail, cls:''}
+    ];
+    el.innerHTML = chips.map(c=> `<div class="risk-chip ${c.cls}"><span class="n">${c.v}</span><span class="l">${c.label}</span></div>`).join('');
+}
+
+function renderOverloadedTable(){
+    const q = txSearch.trim();
+    let rows = globalTx.filter(t=>t.loadPct>=CFG.overloadHigh*0.7);
+    if(q) rows = rows.filter(t=>regMatches(t,q));
+    rows.sort((a,b)=>b.loadPct-a.loadPct);
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / REG_PAGE_SIZE));
+    if(overloadPage > totalPages) overloadPage = totalPages;
+    const page = rows.slice((overloadPage-1)*REG_PAGE_SIZE, overloadPage*REG_PAGE_SIZE);
+
+    document.getElementById('table-overloaded').innerHTML = page.map(t=>`
         <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
         <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':(t.loadPct>=CFG.overloadHigh?'high':'med'))}</td></tr>`
-    ).join('') || `<tr class="empty-row"><td colspan="6">الشبكة ضمن الحدود الطبيعية</td></tr>`;
+    ).join('') || `<tr class="empty-row"><td colspan="6">${q ? 'لا توجد نتائج مطابقة للبحث' : 'الشبكة ضمن الحدود الطبيعية'}</td></tr>`;
 
-    // Neutral
-    const neu = [...txs].filter(t=>t.neutral>0).sort((a,b)=>b.neutral-a.neutral).slice(0,8);
-    document.getElementById('table-neutral').innerHTML = neu.map(t=>`
-        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${Math.round(t.neutral)}</td><td class="num">${t.neutralPct.toFixed(0)}%</td></tr>`
-    ).join('') || `<tr class="empty-row"><td colspan="6">لا توجد بيانات كافية</td></tr>`;
+    renderSimplePagination('overloaded-pagination', rows.length, overloadPage, 'goOverloadPage');
+}
+function goOverloadPage(p){ overloadPage = p; renderOverloadedTable(); }
+
+function renderNeutralTable(){
+    const q = txSearch.trim();
+    let rows = globalTx.filter(t=>t.neutral>0);
+    if(q) rows = rows.filter(t=>regMatches(t,q));
+    rows.sort((a,b)=>b.neutral-a.neutral);
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / REG_PAGE_SIZE));
+    if(neutralPage > totalPages) neutralPage = totalPages;
+    const page = rows.slice((neutralPage-1)*REG_PAGE_SIZE, neutralPage*REG_PAGE_SIZE);
+
+    document.getElementById('table-neutral').innerHTML = page.map(t=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${Math.round(t.neutral)}</td><td class="num">${t.neutralPct.toFixed(0)}%</td>
+        <td>${sevBadge(t.neutralPct>=CFG.neutralHigh*1.8?'crit':(t.neutralPct>=CFG.neutralHigh?'high':'ok'))}</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="7">${q ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد بيانات كافية'}</td></tr>`;
+
+    renderSimplePagination('neutral-pagination', rows.length, neutralPage, 'goNeutralPage');
+}
+function goNeutralPage(p){ neutralPage = p; renderNeutralTable(); }
+
+function setTxSearch(v){
+    txSearch = v; overloadPage = 1; neutralPage = 1;
+    renderOverloadedTable(); renderNeutralTable();
+}
+
+/* =========================================================
+   CABLES TAB — summary + search + paginated high-feeders table
+   (the cable map's own render/pagination lives with renderCableMap above)
+========================================================= */
+let cablesSearch = '';
+let highFeedersPage = 1;
+
+function renderCablesSummary(){
+    const el = document.getElementById('cables-summary');
+    if(!el) return;
+    if(!globalTx.length){ el.innerHTML=''; return; }
+    const allFeeders = globalTx.flatMap(t=>t.feeders);
+    const crit = allFeeders.filter(f=>f.loadPct>=CFG.feederCritPct).length;
+    const high = allFeeders.filter(f=>f.loadPct>=CFG.feederWarnPct && f.loadPct<CFG.feederCritPct).length;
+    const maxPct = allFeeders.length ? Math.max(...allFeeders.map(f=>f.loadPct)) : 0;
+    const chips = [
+        {label:'إجمالي الكيبلات المُقاسة', v:allFeeders.length, cls:''},
+        {label:'حرج', v:crit, cls:'crit'},
+        {label:'مرتفع', v:high, cls:'high'},
+        {label:'أعلى نسبة تحميل', v:maxPct.toFixed(0)+'%', cls: maxPct>=CFG.feederCritPct?'crit':(maxPct>=CFG.feederWarnPct?'high':'')}
+    ];
+    el.innerHTML = chips.map(c=> `<div class="risk-chip ${c.cls}"><span class="n">${c.v}</span><span class="l">${c.label}</span></div>`).join('');
+}
+
+function renderHighFeedersTable(){
+    const feederFilterEl = document.getElementById('feeder-type-filter');
+    const feederFilter = feederFilterEl ? feederFilterEl.value : '__all__';
+    const q = cablesSearch.trim();
+    let feederRows = [];
+    globalTx.forEach(t=>{
+        if(q && !regMatches(t,q)) return;
+        t.feeders.forEach(f=>{
+            if(feederFilter !== '__all__' && f.feeder !== feederFilter) return;
+            if(f.loadPct >= CFG.feederWarnPct) feederRows.push({t,f});
+        });
+    });
+    feederRows.sort((a,b)=>b.f.loadPct - a.f.loadPct);
+
+    const totalPages = Math.max(1, Math.ceil(feederRows.length / REG_PAGE_SIZE));
+    if(highFeedersPage > totalPages) highFeedersPage = totalPages;
+    const page = feederRows.slice((highFeedersPage-1)*REG_PAGE_SIZE, highFeedersPage*REG_PAGE_SIZE);
+
+    document.getElementById('table-high-feeders').innerHTML = page.map(({t,f})=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
+        <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td><td>${sevBadge(f.loadPct>=CFG.feederCritPct?'crit':'high')}</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="8">${q ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد كيبلات '+(feederFilter!=='__all__' ? '('+feederFilter+') ' : '')+'تجاوزت الحد المسموح ضمن هذا النطاق'}</td></tr>`;
+
+    renderSimplePagination('high-feeders-pagination', feederRows.length, highFeedersPage, 'goHighFeedersPage');
+}
+function goHighFeedersPage(p){ highFeedersPage = p; renderHighFeedersTable(); }
+
+function setCablesSearch(v){
+    cablesSearch = v; highFeedersPage = 1; cableMapPage = 1;
+    renderHighFeedersTable(); renderCableMap();
+}
+
+function renderDetailTables(){
+    renderTxSummary();
+    renderOverloadedTable();
+    renderNeutralTable();
+    renderCablesSummary();
+    renderHighFeedersTable();
 }
 
 /* =========================================================

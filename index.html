@@ -195,6 +195,30 @@
 
     .chart-box{background:var(--panel-2); border:1px solid var(--panel-border); border-radius:12px; padding:14px; height:300px;}
 
+    /* ---------- Risk register ---------- */
+    .risk-summary{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+    .risk-chip{
+        flex:1 1 110px; background:var(--panel-2); border:1px solid var(--panel-border); border-radius:10px;
+        padding:10px 14px; text-align:center;
+    }
+    .risk-chip .n{display:block; font-family:var(--mono); font-size:1.4em; font-weight:700;}
+    .risk-chip .l{display:block; font-size:.74em; color:var(--muted); margin-top:2px;}
+    .risk-chip.crit .n{color:var(--crit);} .risk-chip.high .n{color:var(--watch);}
+    .risk-filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+    .risk-filters input[type="text"]{flex:1 1 220px;}
+    .risk-filters select{flex:0 0 auto;}
+    .risk-hint{margin:0 0 10px; font-size:.8em; color:var(--muted-2);}
+    tr.risk-row{cursor:pointer;}
+    tr.risk-row td:first-child{border-inline-start:3px solid transparent;}
+    tr.risk-row.sev-crit td:first-child{border-inline-start-color:var(--crit);}
+    tr.risk-row.sev-high td:first-child{border-inline-start-color:var(--watch);}
+    tr.risk-row:nth-child(4n+1){background:var(--panel-2);}
+    tr.risk-detail{background:var(--accent-dim);}
+    tr.risk-detail td{white-space:normal; line-height:1.9; font-size:.88em; color:var(--text); padding:14px 16px;}
+    tr.risk-detail b{color:var(--accent);}
+    .risk-pagination{display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px; font-size:.85em; color:var(--muted);}
+    .risk-pagination button:disabled{opacity:.4; cursor:not-allowed;}
+
     /* ---------- Cable load map ---------- */
     .cable-cell{
         display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
@@ -667,15 +691,32 @@
                 <div class="panel-head">
                     <h2>🛡️ سجل المخاطر الفنية <span class="count" id="risk-count">0 حالة</span></h2>
                 </div>
+                <div class="risk-summary" id="risk-summary"></div>
+                <div class="risk-filters">
+                    <input type="text" id="risk-search" placeholder="🔍 بحث بالمحطة أو المنطقة أو المراقبة..." oninput="setRiskSearch(this.value)">
+                    <select id="risk-severity-filter" onchange="setRiskSeverity(this.value)">
+                        <option value="__all__">كل درجات الخطورة</option>
+                        <option value="crit">حرج فقط</option>
+                        <option value="high">مرتفع فقط</option>
+                    </select>
+                    <select id="risk-type-filter" onchange="setRiskType(this.value)">
+                        <option value="__all__">كل أنواع الخلل</option>
+                        <option value="overload">تحميل زائد على المحول</option>
+                        <option value="neutral">ارتفاع تيار النيوترال</option>
+                        <option value="feeder">تجاوز سعة الكيبل الرئيسي</option>
+                    </select>
+                </div>
+                <p class="risk-hint">💡 اضغط على أي صف لعرض السبب المرجّح وإجراء المعالجة المقترح</p>
                 <div class="tbl-wrap">
                     <table>
                         <thead><tr>
                             <th>الخطورة</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
-                            <th>القيمة المقاسة</th><th>السبب المرجّح</th><th>إجراء المعالجة المقترح</th>
+                            <th>القيمة المقاسة</th>
                         </tr></thead>
                         <tbody id="risk-body"></tbody>
                     </table>
                 </div>
+                <div class="risk-pagination" id="risk-pagination"></div>
             </div>
 
             <!-- Reference guide -->
@@ -1628,6 +1669,7 @@ function sevRank(s){ return {crit:3, high:2, med:1, ok:0}[s] || 0; }
 
 function computeRisks(txs){
     let risks = [];
+    riskIdSeq = 0;
 
     txs.forEach(t=>{
         // Overload
@@ -1655,9 +1697,11 @@ function computeRisks(txs){
     risks.sort((a,b)=> sevRank(b.severity)-sevRank(a.severity));
     return risks;
 }
+let riskIdSeq = 0;
 function mkRisk(t, type, severity, value, threshold){
     const lib = RISK_LIB[type];
     return {
+        id: riskIdSeq++,
         ss:t.ssNum, office:t.office, area:t.area, tName:t.tName, type, label:lib.label, severity,
         value, threshold, cause:lib.cause, remedy:lib.remedy
     };
@@ -1703,16 +1747,75 @@ function updateKPIs(txs, risks){
 }
 
 /* =========================================================
-   RISK REGISTER TABLE
+   RISK REGISTER — summary chips + filters + paginated,
+   expandable table (click a row for cause/remedy)
 ========================================================= */
+let allRisks = [];
+const RISK_PAGE_SIZE = 25;
+let riskState = { search:'', severity:'__all__', type:'__all__', page:1, expanded:new Set() };
+
 function renderRiskRegister(risks){
+    allRisks = risks;
+    riskState.page = 1;
+    riskState.expanded = new Set();
     document.getElementById('risk-count').innerText = risks.length + ' حالة';
-    if(!risks.length){
-        document.getElementById('risk-body').innerHTML = `<tr class="empty-row"><td colspan="9">لا توجد مخالفات لمعايير التحميل أو النيوترال أو سعة الكيبلات ضمن البيانات المدخلة ✅</td></tr>`;
+    renderRiskSummary(risks);
+    renderRiskTable();
+}
+
+function renderRiskSummary(risks){
+    const el = document.getElementById('risk-summary');
+    if(!el) return;
+    const crit = risks.filter(r=>r.severity==='crit').length;
+    const high = risks.filter(r=>r.severity==='high').length;
+    const byType = {};
+    risks.forEach(r=> byType[r.type] = (byType[r.type]||0)+1);
+    const chips = [
+        {label:'حرج', v:crit, cls:'crit'},
+        {label:'مرتفع', v:high, cls:'high'},
+        {label:RISK_LIB.overload.label, v:byType.overload||0, cls:''},
+        {label:RISK_LIB.neutral.label, v:byType.neutral||0, cls:''},
+        {label:RISK_LIB.feeder.label, v:byType.feeder||0, cls:''}
+    ];
+    el.innerHTML = chips.map(c=> `<div class="risk-chip ${c.cls}"><span class="n">${c.v}</span><span class="l">${c.label}</span></div>`).join('');
+}
+
+function applyRiskFilters(risks){
+    const q = riskState.search.trim();
+    return risks.filter(r=>{
+        if(riskState.severity!=='__all__' && r.severity!==riskState.severity) return false;
+        if(riskState.type!=='__all__' && r.type!==riskState.type) return false;
+        if(q && !(String(r.ss).includes(q) || r.area.includes(q) || r.office.includes(q) || r.tName.includes(q))) return false;
+        return true;
+    });
+}
+
+function renderRiskTable(){
+    const filtered = applyRiskFilters(allRisks);
+    if(!allRisks.length){
+        document.getElementById('risk-body').innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد مخالفات لمعايير التحميل أو النيوترال أو سعة الكيبلات ضمن البيانات المدخلة ✅</td></tr>`;
+        document.getElementById('risk-pagination').innerHTML = '';
         return;
     }
-    document.getElementById('risk-body').innerHTML = risks.map(r=>`
-        <tr>
+    if(!filtered.length){
+        document.getElementById('risk-body').innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد حالات مطابقة للفلاتر الحالية</td></tr>`;
+        document.getElementById('risk-pagination').innerHTML = '';
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / RISK_PAGE_SIZE));
+    if(riskState.page > totalPages) riskState.page = totalPages;
+    const start = (riskState.page-1)*RISK_PAGE_SIZE;
+    const pageRows = filtered.slice(start, start+RISK_PAGE_SIZE);
+
+    document.getElementById('risk-body').innerHTML = pageRows.map(r=>{
+        const expanded = riskState.expanded.has(r.id);
+        const detail = expanded ? `
+            <tr class="risk-detail"><td colspan="7">
+                <b>السبب المرجّح:</b> ${r.cause}<br>
+                <b>إجراء المعالجة المقترح:</b> ${r.remedy}
+            </td></tr>` : '';
+        return `<tr class="risk-row sev-${r.severity}" onclick="toggleRiskRow(${r.id})">
             <td>${sevBadge(r.severity)}</td>
             <td class="num">${r.ss}</td>
             <td>${r.office}</td>
@@ -1720,10 +1823,50 @@ function renderRiskRegister(risks){
             <td>${r.tName}</td>
             <td>${r.label}</td>
             <td class="num">${r.value}</td>
-            <td class="wrap">${r.cause}</td>
-            <td class="wrap"><b style="color:var(--accent)">✔</b> ${r.remedy}</td>
-        </tr>`).join('');
+        </tr>${detail}`;
+    }).join('');
+
+    renderRiskPagination(filtered.length, totalPages);
 }
+
+function renderRiskPagination(total, totalPages){
+    const el = document.getElementById('risk-pagination');
+    if(!el) return;
+    if(total <= RISK_PAGE_SIZE){ el.innerHTML=''; return; }
+    el.innerHTML = `
+        <button class="btn" ${riskState.page<=1?'disabled':''} onclick="goRiskPage(${riskState.page-1})">‹ السابق</button>
+        <span>صفحة ${riskState.page} من ${totalPages} (${total} حالة)</span>
+        <button class="btn" ${riskState.page>=totalPages?'disabled':''} onclick="goRiskPage(${riskState.page+1})">التالي ›</button>`;
+}
+function goRiskPage(p){ riskState.page = p; renderRiskTable(); }
+function toggleRiskRow(id){
+    if(riskState.expanded.has(id)) riskState.expanded.delete(id); else riskState.expanded.add(id);
+    renderRiskTable();
+}
+function setRiskSearch(v){ riskState.search=v; riskState.page=1; renderRiskTable(); }
+function setRiskSeverity(v){ riskState.severity=v; riskState.page=1; renderRiskTable(); }
+function setRiskType(v){ riskState.type=v; riskState.page=1; renderRiskTable(); }
+
+// Printing must show every matching risk (with cause/remedy expanded), not just the current page.
+let riskPrintBackupPage = null;
+window.addEventListener('beforeprint', ()=>{
+    if(!allRisks.length) return;
+    riskPrintBackupPage = riskState.page;
+    const filtered = applyRiskFilters(allRisks);
+    document.getElementById('risk-body').innerHTML = filtered.map(r=> `
+        <tr class="risk-row sev-${r.severity}">
+            <td>${sevBadge(r.severity)}</td><td class="num">${r.ss}</td><td>${r.office}</td>
+            <td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td><td class="num">${r.value}</td>
+        </tr>
+        <tr class="risk-detail"><td colspan="7"><b>السبب المرجّح:</b> ${r.cause}<br><b>إجراء المعالجة المقترح:</b> ${r.remedy}</td></tr>`
+    ).join('');
+});
+window.addEventListener('afterprint', ()=>{
+    if(riskPrintBackupPage===null) return;
+    riskState.page = riskPrintBackupPage;
+    riskPrintBackupPage = null;
+    renderRiskTable();
+});
 
 /* =========================================================
    ANALOG GAUGE CLUSTER (signature visual)

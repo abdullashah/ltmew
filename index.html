@@ -566,6 +566,7 @@
         <button class="dash-tab" data-tab="transformers" onclick="switchDashTab('transformers')">🔌 المحولات</button>
         <button class="dash-tab" data-tab="cables" onclick="switchDashTab('cables')">🧵 الكيبلات</button>
         <button class="dash-tab" data-tab="risk" onclick="switchDashTab('risk')">🛡️ المخاطر</button>
+        <button class="dash-tab" data-tab="reports" onclick="switchDashTab('reports')">📑 التقارير</button>
         <div class="dash-tab-filter">
             <label for="feeder-type-filter">نوع الخط (المغذي)</label>
             <select id="feeder-type-filter" onchange="runAnalysis()">
@@ -587,23 +588,6 @@
             <div class="panel">
                 <div class="panel-head"><h2>📈 ترتيب المحولات حسب نسبة التحميل</h2></div>
                 <div class="chart-box" style="height:340px;"><canvas id="rankChart"></canvas></div>
-            </div>
-
-            <!-- Load shifting -->
-            <div class="panel">
-                <div class="panel-head"><h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2></div>
-                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em; line-height:1.9;">
-                    <b style="color:var(--text)">طريقة العمل:</b> يفحص النظام كل محطة على حدة. إذا وُجد بها محول محمّل بنسبة
-                    ≥ <span id="shift-method-high">80</span>% من سعته، يبحث عن محول آخر في نفس المحطة محمّل بأقل من
-                    <span id="shift-method-low">60</span>%. عند توفر الشرطين، يقترح النظام فصل أعلى كيبل تحميلاً (الأكثر تياراً) من المحول
-                    المجهد وربطه على أقل كيبل تحميلاً في المحول المتاح، لتخفيف الضغط عن الأول دون تجاوز سعة الثاني.
-                </p>
-                <div class="tbl-wrap">
-                    <table>
-                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
-                        <tbody id="table-shifts"></tbody>
-                    </table>
-                </div>
             </div>
 
             <!-- Charts -->
@@ -739,6 +723,56 @@
             <div class="panel">
                 <div class="panel-head"><h2>📘 دليل المخاطر الفنية العامة وطرق المعالجة</h2></div>
                 <div class="ref-grid" id="ref-grid"></div>
+            </div>
+        </div>
+
+        <div class="dash-pane" data-pane="reports" style="display:none;">
+            <!-- Load shifting -->
+            <div class="panel">
+                <div class="panel-head"><h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2></div>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em; line-height:1.9;">
+                    <b style="color:var(--text)">طريقة العمل:</b> يفحص النظام كل محطة على حدة. إذا وُجد بها محول محمّل بنسبة
+                    ≥ <span id="shift-method-high">80</span>% من سعته، يبحث عن محول آخر في نفس المحطة محمّل بأقل من
+                    <span id="shift-method-low">60</span>%. عند توفر الشرطين، يقترح النظام فصل أعلى كيبل تحميلاً (الأكثر تياراً) من المحول
+                    المجهد وربطه على أقل كيبل تحميلاً في المحول المتاح، لتخفيف الضغط عن الأول دون تجاوز سعة الثاني.
+                </p>
+                <div class="tbl-wrap">
+                    <table>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                        <tbody id="table-shifts"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dangerous transformers report -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2 style="color:var(--crit)">🔴 تقرير المحولات الخطرة</h2>
+                    <span class="count" id="danger-tx-count">0 محول</span>
+                </div>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">كل المحولات المحمّلة بنسبة ≥ <span id="danger-tx-threshold">80</span>% (حرج + مرتفع)، مرتبة تنازليًا حسب نسبة التحميل.</p>
+                <div class="chart-box" style="height:360px;"><canvas id="dangerTxChart"></canvas></div>
+                <div class="tbl-wrap" style="margin-top:16px;">
+                    <table>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الحمل %</th><th>الحالة</th></tr></thead>
+                        <tbody id="table-danger-tx"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Top 20 most loaded cables report -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2 style="color:var(--watch)">🧵 تقرير أكثر 20 كيبل تحميلاً</h2>
+                </div>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">أعلى 20 كيبلاً (مغذي) من حيث نسبة التحميل من سعتها الاسمية، عبر كل المحولات المعروضة حاليًا.</p>
+                <div class="chart-box" style="height:420px;"><canvas id="top20CablesChart"></canvas></div>
+                <div class="tbl-wrap" style="margin-top:16px;">
+                    <table>
+                        <thead><tr><th>#</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من سعة الكيبل</th></tr></thead>
+                        <tbody id="table-top20-cables"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -934,7 +968,7 @@ const RISK_LIB = {
 ========================================================= */
 let loadedOffices = {};   // { officeName: XLSX.Workbook }
 let lastSelection = { office:'__all__', area:'__all__' };
-let charts = { pie:null, radar:null, size:null, rank:null, gauges:[], cableGauges:[] };
+let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, gauges:[], cableGauges:[] };
 let globalTx = [];
 
 /* =========================================================
@@ -949,9 +983,18 @@ function toggleTheme(){
     document.body.classList.toggle('light');
     if(globalTx.length) renderCharts(globalTx);
 }
+let activeDashTab = 'overview';
+function isDashTabActive(tab){ return activeDashTab === tab; }
 function switchDashTab(tab){
+    activeDashTab = tab;
     document.querySelectorAll('.dash-tab').forEach(b=> b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.dash-pane').forEach(p=> p.style.display = (p.dataset.pane === tab) ? 'block' : 'none');
+    // Chart.js can't size a canvas while its pane is display:none — (re)create the
+    // Reports charts now that the pane is actually visible and measurable.
+    if(tab === 'reports' && globalTx.length){
+        renderDangerTxChart();
+        renderTop20CablesChart();
+    }
 }
 function toggleSettings(){
     const p = document.getElementById('settings-panel');
@@ -1677,6 +1720,8 @@ function processWorkbookData(sheetsData){
     renderCharts(transformers);
     renderRankChart(transformers);
     renderShiftTable(transformers);
+    renderDangerTxReport(transformers);
+    renderTop20CablesReport(transformers);
     renderDetailTables();
 }
 
@@ -1692,36 +1737,36 @@ function computeRisks(txs){
     txs.forEach(t=>{
         // Overload
         if(t.loadPct >= CFG.overloadCrit){
-            risks.push(mkRisk(t,'overload','crit', t.loadPct.toFixed(1)+'%', '≥ '+CFG.overloadCrit+'%'));
+            risks.push(mkRisk(t,'overload','crit', t.loadPct.toFixed(1)+'%', '≥ '+CFG.overloadCrit+'%', t.loadPct));
         } else if(t.loadPct >= CFG.overloadHigh){
-            risks.push(mkRisk(t,'overload','high', t.loadPct.toFixed(1)+'%', '≥ '+CFG.overloadHigh+'%'));
+            risks.push(mkRisk(t,'overload','high', t.loadPct.toFixed(1)+'%', '≥ '+CFG.overloadHigh+'%', t.loadPct));
         }
         // Neutral
         if(t.neutralPct >= CFG.neutralHigh*1.8){
-            risks.push(mkRisk(t,'neutral','crit', Math.round(t.neutral)+' A ('+t.neutralPct.toFixed(0)+'%)', '≥ '+(CFG.neutralHigh*1.8).toFixed(0)+'%'));
+            risks.push(mkRisk(t,'neutral','crit', Math.round(t.neutral)+' A ('+t.neutralPct.toFixed(0)+'%)', '≥ '+(CFG.neutralHigh*1.8).toFixed(0)+'%', t.neutralPct));
         } else if(t.neutralPct >= CFG.neutralHigh){
-            risks.push(mkRisk(t,'neutral','high', Math.round(t.neutral)+' A ('+t.neutralPct.toFixed(0)+'%)', '≥ '+CFG.neutralHigh+'%'));
+            risks.push(mkRisk(t,'neutral','high', Math.round(t.neutral)+' A ('+t.neutralPct.toFixed(0)+'%)', '≥ '+CFG.neutralHigh+'%', t.neutralPct));
         }
         // Feeders (main cables, 300mm² class — configurable)
         t.feeders.forEach(f=>{
             if(f.loadPct >= CFG.feederCritPct){
-                risks.push(mkRisk(t,'feeder','crit', Math.round(f.maxLoad)+' A ('+f.feeder+', '+f.loadPct.toFixed(0)+'%)', '≥ '+CFG.feederCritPct+'%'));
+                risks.push(mkRisk(t,'feeder','crit', Math.round(f.maxLoad)+' A ('+f.feeder+', '+f.loadPct.toFixed(0)+'%)', '≥ '+CFG.feederCritPct+'%', f.loadPct));
             } else if(f.loadPct >= CFG.feederWarnPct){
-                risks.push(mkRisk(t,'feeder','high', Math.round(f.maxLoad)+' A ('+f.feeder+', '+f.loadPct.toFixed(0)+'%)', '≥ '+CFG.feederWarnPct+'%'));
+                risks.push(mkRisk(t,'feeder','high', Math.round(f.maxLoad)+' A ('+f.feeder+', '+f.loadPct.toFixed(0)+'%)', '≥ '+CFG.feederWarnPct+'%', f.loadPct));
             }
         });
     });
 
-    risks.sort((a,b)=> sevRank(b.severity)-sevRank(a.severity));
+    risks.sort((a,b)=> sevRank(b.severity)-sevRank(a.severity) || b.pct-a.pct);
     return risks;
 }
 let riskIdSeq = 0;
-function mkRisk(t, type, severity, value, threshold){
+function mkRisk(t, type, severity, value, threshold, pct){
     const lib = RISK_LIB[type];
     return {
         id: riskIdSeq++,
         ss:t.ssNum, office:t.office, area:t.area, tName:t.tName, type, label:lib.label, severity,
-        value, threshold, cause:lib.cause, remedy:lib.remedy
+        value, threshold, pct, cause:lib.cause, remedy:lib.remedy
     };
 }
 function sevBadge(sev){
@@ -2167,6 +2212,76 @@ function renderShiftTable(txs){
 }
 
 /* =========================================================
+   REPORTS TAB — dangerous transformers + top 20 cables
+========================================================= */
+// Chart.js can't size a canvas while its tab pane is display:none, so chart
+// creation for the Reports tab is deferred until that tab is actually shown
+// (see switchDashTab). These hold the latest computed rows for that purpose.
+let lastDangerTxRows = [];
+let lastTop20Cables = [];
+
+function renderDangerTxReport(txs){
+    document.getElementById('danger-tx-threshold').innerText = CFG.overloadHigh;
+    const rows = [...txs].filter(t=>t.loadPct>=CFG.overloadHigh).sort((a,b)=>b.loadPct-a.loadPct);
+    lastDangerTxRows = rows;
+    document.getElementById('danger-tx-count').innerText = rows.length + ' محول';
+
+    document.getElementById('table-danger-tx').innerHTML = rows.map(t=>`
+        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
+        <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':'high')}</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="6">لا توجد محولات بنسبة تحميل ≥ ${CFG.overloadHigh}% ضمن هذا النطاق ✅</td></tr>`;
+
+    if(isDashTabActive('reports')) renderDangerTxChart();
+}
+function renderDangerTxChart(){
+    if(charts.dangerTx) charts.dangerTx.destroy();
+    const top = lastDangerTxRows.slice(0,20);
+    const textColor = getCss('--muted');
+    const gridColor = getCss('--panel-border');
+    charts.dangerTx = new Chart(document.getElementById('dangerTxChart'), {
+        type:'bar',
+        data:{ labels: top.map(t=>`${t.ssNum}-${t.tName}`),
+               datasets:[{ label:'نسبة التحميل %', data: top.map(t=>t.loadPct.toFixed(1)),
+                   backgroundColor: top.map(t=> t.loadPct>=CFG.overloadCrit?getCss('--crit'):getCss('--watch')),
+                   borderRadius:5 }] },
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor, font:{family:"'JetBrains Mono',monospace", size:11}}, grid:{display:false}} },
+            plugins:{ legend:{display:false} } }
+    });
+}
+
+function renderTop20CablesReport(txs){
+    let allFeeders = [];
+    txs.forEach(t=> t.feeders.forEach(f=>{ if(f.maxLoad>0) allFeeders.push({t,f}); }));
+    allFeeders.sort((a,b)=>b.f.loadPct - a.f.loadPct);
+    const top20 = allFeeders.slice(0,20);
+    lastTop20Cables = top20;
+
+    document.getElementById('table-top20-cables').innerHTML = top20.map(({t,f},i)=>`
+        <tr><td class="num">${i+1}</td><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
+        <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td></tr>`
+    ).join('') || `<tr class="empty-row"><td colspan="8">لا توجد بيانات كيبلات كافية</td></tr>`;
+
+    if(isDashTabActive('reports')) renderTop20CablesChart();
+}
+function renderTop20CablesChart(){
+    if(charts.top20Cables) charts.top20Cables.destroy();
+    const top20 = lastTop20Cables;
+    const textColor = getCss('--muted');
+    const gridColor = getCss('--panel-border');
+    charts.top20Cables = new Chart(document.getElementById('top20CablesChart'), {
+        type:'bar',
+        data:{ labels: top20.map(({t,f})=>`${t.ssNum}-${t.tName}-${f.feeder}`),
+               datasets:[{ label:'نسبة التحميل %', data: top20.map(({f})=>f.loadPct.toFixed(0)),
+                   backgroundColor: top20.map(({f})=> f.loadPct>=CFG.feederCritPct?getCss('--crit'):f.loadPct>=CFG.feederWarnPct?getCss('--watch'):getCss('--ok')),
+                   borderRadius:5 }] },
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor, font:{family:"'JetBrains Mono',monospace", size:10}}, grid:{display:false}} },
+            plugins:{ legend:{display:false} } }
+    });
+}
+
+/* =========================================================
    DETAIL TABLES
 ========================================================= */
 /* =========================================================
@@ -2247,7 +2362,7 @@ function renderNeutralTable(){
     const q = txSearch.trim();
     let rows = globalTx.filter(t=>t.neutral>0);
     if(q) rows = rows.filter(t=>regMatches(t,q));
-    rows.sort((a,b)=>b.neutral-a.neutral);
+    rows.sort((a,b)=>b.neutralPct-a.neutralPct);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / REG_PAGE_SIZE));
     if(neutralPage > totalPages) neutralPage = totalPages;

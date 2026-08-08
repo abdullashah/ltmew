@@ -1910,25 +1910,45 @@ function setRiskSearch(v){ riskState.search=v; riskState.page=1; renderRiskTable
 function setRiskSeverity(v){ riskState.severity=v; riskState.page=1; renderRiskTable(); }
 function setRiskType(v){ riskState.type=v; riskState.page=1; renderRiskTable(); }
 
-// Printing must show every matching risk (with cause/remedy expanded), not just the current page.
+// Printing must show every matching row (with risk cause/remedy expanded), not
+// just the current page — pagination is a screen-only convenience.
 let riskPrintBackupPage = null;
+let regPrintBackupSize = null;
 window.addEventListener('beforeprint', ()=>{
-    if(!allRisks.length) return;
-    riskPrintBackupPage = riskState.page;
-    const filtered = applyRiskFilters(allRisks);
-    document.getElementById('risk-body').innerHTML = filtered.map(r=> `
-        <tr class="risk-row sev-${r.severity}">
-            <td>${sevBadge(r.severity)}</td><td class="num">${r.ss}</td><td>${r.office}</td>
-            <td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td><td class="num">${r.value}</td>
-        </tr>
-        <tr class="risk-detail"><td colspan="7"><b>السبب المرجّح:</b> ${r.cause}<br><b>إجراء المعالجة المقترح:</b> ${r.remedy}</td></tr>`
-    ).join('');
+    if(allRisks.length){
+        riskPrintBackupPage = riskState.page;
+        const filtered = applyRiskFilters(allRisks);
+        document.getElementById('risk-body').innerHTML = filtered.map(r=> `
+            <tr class="risk-row sev-${r.severity}">
+                <td>${sevBadge(r.severity)}</td><td class="num">${r.ss}</td><td>${r.office}</td>
+                <td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td><td class="num">${r.value}</td>
+            </tr>
+            <tr class="risk-detail"><td colspan="7"><b>السبب المرجّح:</b> ${r.cause}<br><b>إجراء المعالجة المقترح:</b> ${r.remedy}</td></tr>`
+        ).join('');
+    }
+    if(globalTx.length){
+        regPrintBackupSize = REG_PAGE_SIZE;
+        REG_PAGE_SIZE = Infinity;
+        renderOverloadedTable(); renderNeutralTable(); renderHighFeedersTable(); renderCableMap();
+        // Reports charts need to exist before printing even if that tab was never opened —
+        // and Chart.js can't size a canvas in a display:none pane, so force it visible first.
+        const reportsPane = document.querySelector('.dash-pane[data-pane="reports"]');
+        if(reportsPane) reportsPane.style.display = 'block';
+        renderDangerTxChart(); renderTop20CablesChart();
+    }
 });
 window.addEventListener('afterprint', ()=>{
-    if(riskPrintBackupPage===null) return;
-    riskState.page = riskPrintBackupPage;
-    riskPrintBackupPage = null;
-    renderRiskTable();
+    if(riskPrintBackupPage!==null){
+        riskState.page = riskPrintBackupPage;
+        riskPrintBackupPage = null;
+        renderRiskTable();
+    }
+    if(regPrintBackupSize!==null){
+        REG_PAGE_SIZE = regPrintBackupSize;
+        regPrintBackupSize = null;
+        renderOverloadedTable(); renderNeutralTable(); renderHighFeedersTable(); renderCableMap();
+    }
+    switchDashTab(activeDashTab);
 });
 
 /* =========================================================
@@ -2288,7 +2308,7 @@ function renderTop20CablesChart(){
    SHARED PAGINATION / SEARCH HELPERS
    (transformers tab, cables tab — same pattern as the risk register)
 ========================================================= */
-const REG_PAGE_SIZE = 15;
+let REG_PAGE_SIZE = 15;
 function regMatches(t, q){
     // Office/area are already filterable via the dropdowns up top — search here
     // targets what those can't: a specific station number or transformer.

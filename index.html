@@ -776,7 +776,8 @@
                 <div class="panel-head">
                     <h2 style="color:var(--watch)">🧵 تقرير أكثر 20 كيبل تحميلاً</h2>
                 </div>
-                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">أعلى 20 كيبلاً (مغذي) من حيث نسبة التحميل من سعتها الاسمية، عبر كل المحولات المعروضة حاليًا.</p>
+                <p style="margin:-4px 0 4px; color:var(--muted); font-size:.85em;">أعلى 20 كيبلاً (مغذي) من حيث نسبة التحميل من سعتها الاسمية، عبر كل المحولات المعروضة حاليًا.</p>
+                <p id="top20-filter-note" style="margin:0 0 14px; color:var(--accent); font-size:.82em; font-weight:600;"></p>
                 <div class="chart-box" style="height:420px;"><canvas id="top20CablesChart"></canvas></div>
                 <div class="tbl-wrap" style="margin-top:16px;">
                     <table>
@@ -2383,8 +2384,16 @@ function renderDangerTxChart(){
 }
 
 function renderTop20CablesReport(txs){
+    const feederFilterEl = document.getElementById('feeder-type-filter');
+    const feederFilter = feederFilterEl ? feederFilterEl.value : '__all__';
+    const noteEl = document.getElementById('top20-filter-note');
+    if(noteEl) noteEl.innerText = feederFilter==='__all__' ? '' : `مفلترة حاليًا على مغذي ${feederFilter} فقط (حسب فلتر "نوع الخط" بالقائمة الجانبية).`;
+
     let allFeeders = [];
-    txs.forEach(t=> t.feeders.forEach(f=>{ if(f.maxLoad>0) allFeeders.push({t,f}); }));
+    txs.forEach(t=> t.feeders.forEach(f=>{
+        if(feederFilter !== '__all__' && f.feeder !== feederFilter) return;
+        if(f.maxLoad>0) allFeeders.push({t,f});
+    }));
     allFeeders.sort((a,b)=>b.f.loadPct - a.f.loadPct);
     const top20 = allFeeders.slice(0,20);
     lastTop20Cables = top20;
@@ -2392,7 +2401,7 @@ function renderTop20CablesReport(txs){
     document.getElementById('table-top20-cables').innerHTML = top20.map(({t,f},i)=>`
         <tr><td class="num">${i+1}</td><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
         <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td></tr>`
-    ).join('') || `<tr class="empty-row"><td colspan="8">لا توجد بيانات كيبلات كافية</td></tr>`;
+    ).join('') || `<tr class="empty-row"><td colspan="8">لا توجد بيانات كيبلات كافية ${feederFilter!=='__all__' ? '('+feederFilter+')' : ''}</td></tr>`;
 
     if(isDashTabActive('reports')) renderTop20CablesChart();
 }

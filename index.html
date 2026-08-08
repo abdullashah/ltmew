@@ -431,7 +431,8 @@
         body{background:#fff; color:#000; padding:0;}
         .toolbar,.btn,#settings-panel,#report-panel{display:none !important;}
         .panel,.kpi,.gauge-card,.chart-box,.report-doc{border:1px solid #ccc !important; box-shadow:none !important; background:#fff !important;}
-        .topbar{background:#fff !important; border-bottom:2px solid #000;}
+        .topbar{display:none !important;}
+        .report-doc-header{display:none !important;}
         .report-meta{background:#f5f5f5 !important;}
         table{font-size:.8em;}
         .sev{border:1px solid currentColor;}
@@ -2036,6 +2037,13 @@ window.addEventListener('beforeprint', ()=>{
         if(reportsPane) reportsPane.style.display = 'block';
         renderDangerTxChart(); renderTop20CablesChart();
     }
+    // Dashboard + custom report print landscape; the official letter keeps its own A4 portrait page.
+    if(!document.body.classList.contains('letter-mode')){
+        const style = document.createElement('style');
+        style.id = 'print-landscape-override';
+        style.textContent = '@page{ size: A4 landscape; margin:10mm; }';
+        document.head.appendChild(style);
+    }
 });
 window.addEventListener('afterprint', ()=>{
     if(riskPrintBackupPage!==null){
@@ -2049,6 +2057,8 @@ window.addEventListener('afterprint', ()=>{
         renderOverloadedTable(); renderNeutralTable(); renderHighFeedersTable(); renderCableMap();
     }
     switchDashTab(activeDashTab);
+    const landscapeStyle = document.getElementById('print-landscape-override');
+    if(landscapeStyle) landscapeStyle.remove();
 });
 
 /* =========================================================

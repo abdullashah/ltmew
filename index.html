@@ -182,6 +182,11 @@
     .sev.med{background:var(--warn-dim); color:var(--warn);}
     .sev.ok{background:var(--ok-dim); color:var(--ok);}
     .sev::before{content:'●'; font-size:.7em;}
+    .est-mark{
+        display:inline-flex; align-items:center; justify-content:center; margin-inline-start:4px;
+        width:15px; height:15px; border-radius:50%; background:var(--warn-dim); color:var(--warn);
+        font-size:.68em; font-weight:800; cursor:help; vertical-align:middle;
+    }
 
     /* ---------- Tables ---------- */
     .tbl-wrap{overflow-x:auto;}
@@ -764,7 +769,7 @@
                     <h2 style="color:var(--crit)">🔴 تقرير المحولات الخطرة</h2>
                     <span class="count" id="danger-tx-count">0 محول</span>
                 </div>
-                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">كل المحولات المحمّلة بنسبة ≥ <span id="danger-tx-threshold">80</span>% (حرج + مرتفع)، مرتبة تنازليًا حسب نسبة التحميل.</p>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">كل المحولات المحمّلة بنسبة ≥ <span id="danger-tx-threshold">80</span>% (حرج + مرتفع)، مرتبة تنازليًا حسب نسبة التحميل. العلامة <span class="est-mark" style="margin:0 2px;">≈</span> بجانب اسم المحول تعني سعته تقديرية (محسوبة من قراءات المغذيات لعدم توفر السعة الرسمية بالمصدر).</p>
                 <div class="chart-box" style="height:360px;"><canvas id="dangerTxChart"></canvas></div>
                 <div class="tbl-wrap" style="margin-top:16px;">
                     <table>
@@ -990,6 +995,11 @@ let CFG = {
     feederCritPct: 100,
     shiftAvailable: 60
 };
+
+// Standard transformer sizes (kVA) actually used elsewhere in this network — used
+// to estimate a transformer's size when its official rating is missing from the
+// source sheet but its feeder (U1-U6) current readings are present.
+const STANDARD_SIZES = [100, 1000, 1250, 1600];
 
 const RISK_LIB = {
     overload: {
@@ -1234,7 +1244,7 @@ function generateReport(){
             document.getElementById('report-risk-body').innerHTML = filteredRisks.map(r=>`
                 <tr>
                     <td>${sevBadge(r.severity)}</td>
-                    <td class="num">${r.ss}</td><td>${r.office}</td><td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td>
+                    <td class="num">${r.ss}</td><td>${r.office}</td><td>${r.area}</td><td>${r.tName}${r.sizeEstimated ? '<span class="est-mark" title="سعة تقديرية">≈</span>' : ''}</td><td>${r.label}</td>
                     <td class="num">${r.value}</td>
                     <td class="wrap">${r.remedy}</td>
                 </tr>`).join('') + (truncatedNote ? `<tr><td colspan="8" style="text-align:center; color:var(--muted); font-size:.82em; padding-top:10px;">${truncatedNote}</td></tr>` : '');
@@ -1268,14 +1278,14 @@ function generateReport(){
     if(incDangerTx){
         const rows = [...txsScoped].filter(t=>t.loadPct>=CFG.overloadHigh).sort((a,b)=>b.loadPct-a.loadPct);
         document.getElementById('report-danger-tx-body').innerHTML = rows.map(t=>`
-            <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
+            <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}${estMark(t)}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
             <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':'high')}</td></tr>`
         ).join('') || `<tr class="empty-row"><td colspan="6">لا توجد محولات بنسبة تحميل ≥ ${CFG.overloadHigh}% ضمن هذا النطاق ✅</td></tr>`;
         if(charts.reportDangerTx) charts.reportDangerTx.destroy();
         const top = rows.slice(0,20);
         charts.reportDangerTx = new Chart(document.getElementById('reportDangerTxChart'), {
             type:'bar',
-            data:{ labels: top.map(t=>`${t.ssNum}-${t.tName}`),
+            data:{ labels: top.map(t=>`${t.ssNum}-${t.tName}${t.sizeEstimated?' ≈':''}`),
                    datasets:[{ label:'نسبة التحميل %', data: top.map(t=>t.loadPct.toFixed(1)),
                        backgroundColor: top.map(t=> t.loadPct>=CFG.overloadCrit?getCss('--crit'):getCss('--watch')), borderRadius:5 }] },
             options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
@@ -1768,13 +1778,6 @@ function processWorkbookData(sheetsData){
 
             for(let t=1;t<=4;t++){
                 const prefix = `T${t}`;
-                const sizeIdx = getIdx(`Trans. ${t} Size`);
-                if(sizeIdx===-1 || !row[sizeIdx]) continue;
-                const size = parseFloat(row[sizeIdx]);
-                if(isNaN(size) || size===0) continue;
-
-                const ratedI = (size*1000) / (Math.sqrt(3) * CFG.voltage);
-
                 const getVal = colName=>{
                     const idx = getIdx(colName);
                     if(idx===-1 || row[idx]===undefined) return 0;
@@ -1782,16 +1785,9 @@ function processWorkbookData(sheetsData){
                     return isNaN(v)?0:v;
                 };
 
-                const rTot = getVal(`${prefix}.S.R1`) + getVal(`${prefix}.S.R2`);
-                const yTot = getVal(`${prefix}.S.Y1`) + getVal(`${prefix}.S.Y2`);
-                const bTot = getVal(`${prefix}.S.B1`) + getVal(`${prefix}.S.B2`);
-                const n    = getVal(`${prefix}.S.N`);
-                if(rTot===0 && yTot===0 && bTot===0) continue;
-
-                const maxPhase = Math.max(rTot,yTot,bTot);
-                const avgPhase = (rTot+yTot+bTot)/3;
-                const loadPct = (maxPhase/ratedI)*100;
-                const neutralPct = avgPhase>0 ? (n/avgPhase)*100 : 0;
+                const sizeIdx = getIdx(`Trans. ${t} Size`);
+                let size = (sizeIdx!==-1 && row[sizeIdx]) ? parseFloat(row[sizeIdx]) : NaN;
+                if(isNaN(size)) size = 0;
 
                 let feeders = [];
                 for(let f=1; f<=6; f++){
@@ -1804,8 +1800,37 @@ function processWorkbookData(sheetsData){
                     });
                 }
 
+                let rTot = getVal(`${prefix}.S.R1`) + getVal(`${prefix}.S.R2`);
+                let yTot = getVal(`${prefix}.S.Y1`) + getVal(`${prefix}.S.Y2`);
+                let bTot = getVal(`${prefix}.S.B1`) + getVal(`${prefix}.S.B2`);
+                const n  = getVal(`${prefix}.S.N`);
+
+                let sizeEstimated = false;
+                const anyFeederData = feeders.some(f=> f.r>0 || f.y>0 || f.b>0);
+                if(size===0 && rTot===0 && yTot===0 && bTot===0 && anyFeederData){
+                    // Official size / main-current readings are missing for this station,
+                    // but per-feeder (U1-U6) readings are present — derive the real main
+                    // current from those feeders and estimate the nearest standard
+                    // transformer size used elsewhere in the network.
+                    rTot = feeders.reduce((s,f)=>s+f.r,0);
+                    yTot = feeders.reduce((s,f)=>s+f.y,0);
+                    bTot = feeders.reduce((s,f)=>s+f.b,0);
+                    const neededKVA = Math.max(rTot,yTot,bTot) * Math.sqrt(3) * CFG.voltage / 1000;
+                    size = STANDARD_SIZES.find(s=> s>=neededKVA) || STANDARD_SIZES[STANDARD_SIZES.length-1];
+                    sizeEstimated = true;
+                }
+
+                if(size===0) continue;
+                const ratedI = (size*1000) / (Math.sqrt(3) * CFG.voltage);
+                if(rTot===0 && yTot===0 && bTot===0) continue;
+
+                const maxPhase = Math.max(rTot,yTot,bTot);
+                const avgPhase = (rTot+yTot+bTot)/3;
+                const loadPct = (maxPhase/ratedI)*100;
+                const neutralPct = avgPhase>0 ? (n/avgPhase)*100 : 0;
+
                 transformers.push({
-                    office, area, ssNum, tName:prefix, size, ratedI,
+                    office, area, ssNum, tName:prefix, size, ratedI, sizeEstimated,
                     r:rTot, y:yTot, b:bTot, neutral:n,
                     loadPct, neutralPct, feeders
                 });
@@ -1877,13 +1902,21 @@ function mkRisk(t, type, severity, value, threshold, pct){
     return {
         id: riskIdSeq++,
         ss:t.ssNum, office:t.office, area:t.area, tName:t.tName, type, label:lib.label, severity,
-        value, threshold, pct, cause:lib.cause, remedy:lib.remedy
+        value, threshold, pct, cause:lib.cause, remedy:lib.remedy,
+        sizeEstimated: type==='overload' && !!t.sizeEstimated, txSize:t.size
     };
 }
 function sevBadge(sev){
     const map = {crit:['crit','حرج'], high:['high','مرتفع'], med:['med','متوسط'], ok:['ok','طبيعي']};
     const [cls,txt] = map[sev] || map.ok;
     return `<span class="sev ${cls}">${txt}</span>`;
+}
+// Marks transformers whose size (kVA) is an estimate — derived from feeder
+// current readings because the official rating was missing from the source sheet.
+function estMark(tx){
+    return tx && tx.sizeEstimated
+        ? `<span class="est-mark" title="سعة المحول تقديرية (${tx.size} ك.ف.أ) — محسوبة من قراءات المغذيات لعدم توفر السعة الرسمية بالمصدر">≈</span>`
+        : '';
 }
 
 /* =========================================================
@@ -1994,7 +2027,7 @@ function renderRiskTable(){
             <td class="num">${r.ss}</td>
             <td>${r.office}</td>
             <td>${r.area}</td>
-            <td>${r.tName}</td>
+            <td>${r.tName}${r.sizeEstimated ? `<span class="est-mark" title="سعة المحول تقديرية (${r.txSize} ك.ف.أ) — محسوبة من قراءات المغذيات لعدم توفر السعة الرسمية بالمصدر">≈</span>` : ''}</td>
             <td>${r.label}</td>
             <td class="num">${r.value}</td>
         </tr>${detail}`;
@@ -2032,7 +2065,7 @@ window.addEventListener('beforeprint', ()=>{
         document.getElementById('risk-body').innerHTML = filtered.map(r=> `
             <tr class="risk-row sev-${r.severity}">
                 <td>${sevBadge(r.severity)}</td><td class="num">${r.ss}</td><td>${r.office}</td>
-                <td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td><td class="num">${r.value}</td>
+                <td>${r.area}</td><td>${r.tName}${r.sizeEstimated ? '<span class="est-mark" title="سعة تقديرية">≈</span>' : ''}</td><td>${r.label}</td><td class="num">${r.value}</td>
             </tr>
             <tr class="risk-detail"><td colspan="7"><b>السبب المرجّح:</b> ${r.cause}<br><b>إجراء المعالجة المقترح:</b> ${r.remedy}</td></tr>`
         ).join('');
@@ -2091,7 +2124,7 @@ function renderGauges(txs){
     const grid = document.getElementById('gauge-grid');
     grid.innerHTML = top.map((t,i)=>`
         <div class="gauge-card">
-            <span class="gauge-badge" style="background:${gaugeColor(t.loadPct)}22;color:${gaugeColor(t.loadPct)}">${t.size} ك.ف.أ</span>
+            <span class="gauge-badge" style="background:${gaugeColor(t.loadPct)}22;color:${gaugeColor(t.loadPct)}">${t.size} ك.ف.أ${estMark(t)}</span>
             <div class="ss">${t.area} · SS ${t.ssNum}</div>
             <div class="tname">${t.tName}</div>
             <div class="gauge-wrap">
@@ -2307,7 +2340,7 @@ function renderRankChart(txs){
     const sorted = [...txs].sort((a,b)=>b.loadPct-a.loadPct).slice(0,15);
     charts.rank = new Chart(document.getElementById('rankChart'), {
         type:'bar',
-        data:{ labels: sorted.map(t=>`${t.ssNum}-${t.tName}`),
+        data:{ labels: sorted.map(t=>`${t.ssNum}-${t.tName}${t.sizeEstimated?' ≈':''}`),
                datasets:[{ label:'نسبة التحميل %', data: sorted.map(t=>t.loadPct.toFixed(1)),
                    backgroundColor: sorted.map(t=> t.loadPct>=CFG.overloadCrit?getCss('--crit') : t.loadPct>=CFG.overloadHigh?getCss('--watch') : getCss('--ok')),
                    borderRadius:5 }] },
@@ -2369,7 +2402,7 @@ function renderDangerTxReport(txs){
     document.getElementById('danger-tx-count').innerText = rows.length + ' محول';
 
     document.getElementById('table-danger-tx').innerHTML = rows.map(t=>`
-        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
+        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}${estMark(t)}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
         <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':'high')}</td></tr>`
     ).join('') || `<tr class="empty-row"><td colspan="6">لا توجد محولات بنسبة تحميل ≥ ${CFG.overloadHigh}% ضمن هذا النطاق ✅</td></tr>`;
 
@@ -2382,7 +2415,7 @@ function renderDangerTxChart(){
     const gridColor = getCss('--panel-border');
     charts.dangerTx = new Chart(document.getElementById('dangerTxChart'), {
         type:'bar',
-        data:{ labels: top.map(t=>`${t.ssNum}-${t.tName}`),
+        data:{ labels: top.map(t=>`${t.ssNum}-${t.tName}${t.sizeEstimated?' ≈':''}`),
                datasets:[{ label:'نسبة التحميل %', data: top.map(t=>t.loadPct.toFixed(1)),
                    backgroundColor: top.map(t=> t.loadPct>=CFG.overloadCrit?getCss('--crit'):getCss('--watch')),
                    borderRadius:5 }] },
@@ -2500,7 +2533,7 @@ function renderOverloadedTable(){
     const page = rows.slice((overloadPage-1)*REG_PAGE_SIZE, overloadPage*REG_PAGE_SIZE);
 
     document.getElementById('table-overloaded').innerHTML = page.map(t=>`
-        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
+        <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}${estMark(t)}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
         <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':(t.loadPct>=CFG.overloadHigh?'high':'med'))}</td></tr>`
     ).join('') || `<tr class="empty-row"><td colspan="6">${q ? 'لا توجد نتائج مطابقة للبحث' : 'الشبكة ضمن الحدود الطبيعية'}</td></tr>`;
 

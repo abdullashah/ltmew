@@ -536,6 +536,9 @@
         <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
             <input type="checkbox" id="report-inc-kpi" checked style="accent-color:var(--accent);"> تضمين ملخص المؤشرات العام
         </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-risk" checked style="accent-color:var(--accent);"> تضمين جدول الحالات الحرجة والمرتفعة
+        </label>
         <label id="report-inc-overview-wrap" style="display:flex; align-items:center; gap:7px; cursor:pointer;">
             <input type="checkbox" id="report-inc-overview" checked style="accent-color:var(--accent);"> تضمين جدول حالة كل مراقبة
         </label>
@@ -902,15 +905,17 @@
             </div>
         </div>
 
-        <div class="report-section-title" id="report-risk-title">🛡️ الحالات المشمولة والإجراء المطلوب</div>
-        <div id="report-risk-wrap" class="tbl-wrap">
-            <table>
-                <thead><tr>
-                    <th>الخطورة</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
-                    <th>القيمة المقاسة</th><th>الإجراء المطلوب</th>
-                </tr></thead>
-                <tbody id="report-risk-body"></tbody>
-            </table>
+        <div id="report-risk-section">
+            <div class="report-section-title" id="report-risk-title">🛡️ الحالات المشمولة والإجراء المطلوب</div>
+            <div id="report-risk-wrap" class="tbl-wrap">
+                <table>
+                    <thead><tr>
+                        <th>الخطورة</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>نوع الخلل</th>
+                        <th>القيمة المقاسة</th><th>الإجراء المطلوب</th>
+                    </tr></thead>
+                    <tbody id="report-risk-body"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="report-cables-section">
@@ -1134,6 +1139,7 @@ function generateReport(){
     const officeFilter = document.getElementById('report-office-filter').value;
     const areaFilter = isOverview ? '__all__' : document.getElementById('report-area-filter').value;
     const incKpi = document.getElementById('report-inc-kpi').checked;
+    const incRisk = document.getElementById('report-inc-risk').checked;
     const incOverview = isOverview && document.getElementById('report-inc-overview').checked;
     const incCables = document.getElementById('report-inc-cables').checked;
     const incGuide = document.getElementById('report-inc-guide').checked;
@@ -1176,7 +1182,7 @@ function generateReport(){
         <div><span class="lbl">المراقبة</span><b>${officeLabel}</b></div>
         <div><span class="lbl">نطاق المناطق</span><b>${isOverview ? 'كل المناطق (لكل مراقبة)' : areaLabel}</b></div>
         <div><span class="lbl">تاريخ الإصدار</span><b>${dateStr}</b></div>
-        <div><span class="lbl">عدد الحالات ${isOverview ? 'الأبرز المعروضة' : 'المشمولة'}</span><b>${filteredRisks.length}${isOverview && totalMatching>maxPoints ? (' من '+totalMatching) : ''}</b></div>
+        ${incRisk ? `<div><span class="lbl">عدد الحالات ${isOverview ? 'الأبرز المعروضة' : 'المشمولة'}</span><b>${filteredRisks.length}${isOverview && totalMatching>maxPoints ? (' من '+totalMatching) : ''}</b></div>` : ''}
         <div><span class="lbl">إجمالي المحولات بالنطاق</span><b>${txsScoped.length}</b></div>
         ${recipient ? `<div><span class="lbl">موجّه إلى</span><b>${recipient}</b></div>` : ''}
     `;
@@ -1222,17 +1228,20 @@ function generateReport(){
     }
 
     // Risk / highlights table
-    if(filteredRisks.length){
-        document.getElementById('report-risk-body').innerHTML = filteredRisks.map(r=>`
-            <tr>
-                <td>${sevBadge(r.severity)}</td>
-                <td class="num">${r.ss}</td><td>${r.office}</td><td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td>
-                <td class="num">${r.value}</td>
-                <td class="wrap">${r.remedy}</td>
-            </tr>`).join('') + (truncatedNote ? `<tr><td colspan="8" style="text-align:center; color:var(--muted); font-size:.82em; padding-top:10px;">${truncatedNote}</td></tr>` : '');
-    } else {
-        document.getElementById('report-risk-body').innerHTML =
-            `<tr class="empty-row"><td colspan="8">✅ لا توجد حالات ${severity==='crit'?'حرجة':'حرجة أو مرتفعة الخطورة'} ضمن هذا النطاق — الشبكة ضمن الحدود الطبيعية.</td></tr>`;
+    document.getElementById('report-risk-section').style.display = incRisk ? 'block' : 'none';
+    if(incRisk){
+        if(filteredRisks.length){
+            document.getElementById('report-risk-body').innerHTML = filteredRisks.map(r=>`
+                <tr>
+                    <td>${sevBadge(r.severity)}</td>
+                    <td class="num">${r.ss}</td><td>${r.office}</td><td>${r.area}</td><td>${r.tName}</td><td>${r.label}</td>
+                    <td class="num">${r.value}</td>
+                    <td class="wrap">${r.remedy}</td>
+                </tr>`).join('') + (truncatedNote ? `<tr><td colspan="8" style="text-align:center; color:var(--muted); font-size:.82em; padding-top:10px;">${truncatedNote}</td></tr>` : '');
+        } else {
+            document.getElementById('report-risk-body').innerHTML =
+                `<tr class="empty-row"><td colspan="8">✅ لا توجد حالات ${severity==='crit'?'حرجة':'حرجة أو مرتفعة الخطورة'} ضمن هذا النطاق — الشبكة ضمن الحدود الطبيعية.</td></tr>`;
+        }
     }
 
     // Critical cables

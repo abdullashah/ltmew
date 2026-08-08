@@ -194,6 +194,7 @@
     .empty-row td{text-align:center; color:var(--muted); padding:22px;}
 
     .chart-box{background:var(--panel-2); border:1px solid var(--panel-border); border-radius:12px; padding:14px; height:300px;}
+    .report-chart-box{height:380px; margin-bottom:14px;}
 
     /* ---------- Risk register ---------- */
     .risk-summary{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
@@ -539,6 +540,15 @@
         </label>
         <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
             <input type="checkbox" id="report-inc-cables" checked style="accent-color:var(--accent);"> تضمين الكيبلات الحرجة
+        </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-shift" style="accent-color:var(--accent);"> تضمين مقترحات مناورة الأحمال
+        </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-danger-tx" style="accent-color:var(--accent);"> تضمين تقرير المحولات الخطرة
+        </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
+            <input type="checkbox" id="report-inc-top20" style="accent-color:var(--accent);"> تضمين أكثر 20 كيبل تحميلاً
         </label>
         <label style="display:flex; align-items:center; gap:7px; cursor:pointer;">
             <input type="checkbox" id="report-inc-guide" style="accent-color:var(--accent);"> تضمين دليل المعالجة العام (ملحق)
@@ -911,6 +921,38 @@
             </div>
         </div>
 
+        <div id="report-shift-section">
+            <div class="report-section-title" style="border-inline-start-color:var(--ok)">💡 مقترحات مناورة الأحمال الداخلية</div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                    <tbody id="report-shift-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="report-danger-tx-section">
+            <div class="report-section-title" style="border-inline-start-color:var(--crit)">🔴 تقرير المحولات الخطرة</div>
+            <div class="chart-box report-chart-box"><canvas id="reportDangerTxChart"></canvas></div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الحمل %</th><th>الحالة</th></tr></thead>
+                    <tbody id="report-danger-tx-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="report-top20-section">
+            <div class="report-section-title" style="border-inline-start-color:var(--watch)">🧵 تقرير أكثر 20 كيبل تحميلاً</div>
+            <div class="chart-box report-chart-box"><canvas id="reportTop20Chart"></canvas></div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead><tr><th>#</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من السعة</th></tr></thead>
+                    <tbody id="report-top20-body"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div id="report-guide-section">
             <div class="report-section-title">📘 ملحق: دليل المعالجة العام</div>
             <div class="ref-grid" id="report-guide-grid"></div>
@@ -968,7 +1010,7 @@ const RISK_LIB = {
 ========================================================= */
 let loadedOffices = {};   // { officeName: XLSX.Workbook }
 let lastSelection = { office:'__all__', area:'__all__' };
-let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, gauges:[], cableGauges:[] };
+let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, reportDangerTx:null, reportTop20:null, gauges:[], cableGauges:[] };
 let globalTx = [];
 
 /* =========================================================
@@ -1079,6 +1121,11 @@ function buildOfficeSummaryRows(txsScoped){
 function generateReport(){
     if(!globalTx.length) return;
 
+    // Show the report view first — Chart.js can't size a canvas that's still
+    // inside a display:none container, and this view is hidden until now.
+    document.getElementById('report-panel').style.display = 'none';
+    document.body.classList.add('report-mode');
+
     const reportType = document.getElementById('report-type').value;
     const isOverview = reportType === 'overview';
     const severity = document.getElementById('report-severity').value;
@@ -1088,6 +1135,9 @@ function generateReport(){
     const incOverview = isOverview && document.getElementById('report-inc-overview').checked;
     const incCables = document.getElementById('report-inc-cables').checked;
     const incGuide = document.getElementById('report-inc-guide').checked;
+    const incShift = document.getElementById('report-inc-shift').checked;
+    const incDangerTx = document.getElementById('report-inc-danger-tx').checked;
+    const incTop20 = document.getElementById('report-inc-top20').checked;
     const maxPoints = Math.max(5, parseInt(document.getElementById('report-max-points').value, 10) || 25);
     const recipient = document.getElementById('report-recipient').value.trim();
     const preparedBy = document.getElementById('report-prepared-by').value.trim();
@@ -1196,6 +1246,58 @@ function generateReport(){
             : `<tr class="empty-row"><td colspan="7">لا توجد كيبلات تجاوزت نسبة ${CFG.feederWarnPct}% ضمن هذا النطاق</td></tr>`;
     }
 
+    // Load shifting suggestions
+    document.getElementById('report-shift-section').style.display = incShift ? 'block' : 'none';
+    if(incShift){
+        document.getElementById('report-shift-body').innerHTML = buildShiftRowsHtml(txsScoped);
+    }
+
+    // Dangerous transformers
+    document.getElementById('report-danger-tx-section').style.display = incDangerTx ? 'block' : 'none';
+    if(incDangerTx){
+        const rows = [...txsScoped].filter(t=>t.loadPct>=CFG.overloadHigh).sort((a,b)=>b.loadPct-a.loadPct);
+        document.getElementById('report-danger-tx-body').innerHTML = rows.map(t=>`
+            <tr><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td class="num">${t.loadPct.toFixed(1)}%</td>
+            <td>${sevBadge(t.loadPct>=CFG.overloadCrit?'crit':'high')}</td></tr>`
+        ).join('') || `<tr class="empty-row"><td colspan="6">لا توجد محولات بنسبة تحميل ≥ ${CFG.overloadHigh}% ضمن هذا النطاق ✅</td></tr>`;
+        if(charts.reportDangerTx) charts.reportDangerTx.destroy();
+        const top = rows.slice(0,20);
+        charts.reportDangerTx = new Chart(document.getElementById('reportDangerTxChart'), {
+            type:'bar',
+            data:{ labels: top.map(t=>`${t.ssNum}-${t.tName}`),
+                   datasets:[{ label:'نسبة التحميل %', data: top.map(t=>t.loadPct.toFixed(1)),
+                       backgroundColor: top.map(t=> t.loadPct>=CFG.overloadCrit?getCss('--crit'):getCss('--watch')), borderRadius:5 }] },
+            options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+                scales:{ x:{ticks:{color:getCss('--muted')}, grid:{color:getCss('--panel-border')}, beginAtZero:true},
+                         y:{ticks:{color:getCss('--muted'), font:{family:"'JetBrains Mono',monospace", size:11}}, grid:{display:false}} },
+                plugins:{ legend:{display:false} } }
+        });
+    }
+
+    // Top 20 most loaded cables
+    document.getElementById('report-top20-section').style.display = incTop20 ? 'block' : 'none';
+    if(incTop20){
+        let allFeeders = [];
+        txsScoped.forEach(t=> t.feeders.forEach(f=>{ if(f.maxLoad>0) allFeeders.push({t,f}); }));
+        allFeeders.sort((a,b)=>b.f.loadPct - a.f.loadPct);
+        const top20 = allFeeders.slice(0,20);
+        document.getElementById('report-top20-body').innerHTML = top20.map(({t,f},i)=>`
+            <tr><td class="num">${i+1}</td><td class="num">${t.ssNum}</td><td>${t.office}</td><td>${t.area}</td><td>${t.tName}</td><td><b>${f.feeder}</b></td>
+            <td class="num">${Math.round(f.maxLoad)}</td><td class="num">${f.loadPct.toFixed(0)}%</td></tr>`
+        ).join('') || `<tr class="empty-row"><td colspan="8">لا توجد بيانات كيبلات كافية</td></tr>`;
+        if(charts.reportTop20) charts.reportTop20.destroy();
+        charts.reportTop20 = new Chart(document.getElementById('reportTop20Chart'), {
+            type:'bar',
+            data:{ labels: top20.map(({t,f})=>`${t.ssNum}-${t.tName}-${f.feeder}`),
+                   datasets:[{ label:'نسبة التحميل %', data: top20.map(({f})=>f.loadPct.toFixed(0)),
+                       backgroundColor: top20.map(({f})=> f.loadPct>=CFG.feederCritPct?getCss('--crit'):f.loadPct>=CFG.feederWarnPct?getCss('--watch'):getCss('--ok')), borderRadius:5 }] },
+            options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+                scales:{ x:{ticks:{color:getCss('--muted')}, grid:{color:getCss('--panel-border')}, beginAtZero:true},
+                         y:{ticks:{color:getCss('--muted'), font:{family:"'JetBrains Mono',monospace", size:10}}, grid:{display:false}} },
+                plugins:{ legend:{display:false} } }
+        });
+    }
+
     // General guide appendix
     document.getElementById('report-guide-section').style.display = incGuide ? 'block' : 'none';
     if(incGuide){
@@ -1203,8 +1305,6 @@ function generateReport(){
         document.getElementById('report-guide-grid').innerHTML = src ? src.innerHTML : '';
     }
 
-    document.getElementById('report-panel').style.display = 'none';
-    document.body.classList.add('report-mode');
     window.scrollTo({top:0, behavior:'instant'});
 }
 
@@ -2200,10 +2300,7 @@ function renderRankChart(txs){
 /* =========================================================
    SHIFT SUGGESTIONS
 ========================================================= */
-function renderShiftTable(txs){
-    document.getElementById('shift-method-high').innerText = CFG.overloadHigh;
-    document.getElementById('shift-method-low').innerText = CFG.shiftAvailable;
-
+function buildShiftRowsHtml(txs){
     const overloaded = txs.filter(t=>t.loadPct >= CFG.overloadHigh);
     const available = txs.filter(t=>t.loadPct < CFG.shiftAvailable);
     let html = '';
@@ -2228,7 +2325,12 @@ function renderShiftTable(txs){
             });
         });
     });
-    document.getElementById('table-shifts').innerHTML = html || `<tr class="empty-row"><td colspan="7">لا توجد فرص مناورة داخلية متاحة ضمن نفس المحطة حالياً (لا يوجد محول محمّل ≥ ${CFG.overloadHigh}% مع محول آخر أقل من ${CFG.shiftAvailable}% في نفس المحطة)</td></tr>`;
+    return html || `<tr class="empty-row"><td colspan="7">لا توجد فرص مناورة داخلية متاحة ضمن نفس المحطة حالياً (لا يوجد محول محمّل ≥ ${CFG.overloadHigh}% مع محول آخر أقل من ${CFG.shiftAvailable}% في نفس المحطة)</td></tr>`;
+}
+function renderShiftTable(txs){
+    document.getElementById('shift-method-high').innerText = CFG.overloadHigh;
+    document.getElementById('shift-method-low').innerText = CFG.shiftAvailable;
+    document.getElementById('table-shifts').innerHTML = buildShiftRowsHtml(txs);
 }
 
 /* =========================================================

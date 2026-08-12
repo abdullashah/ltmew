@@ -170,7 +170,8 @@
         background:var(--panel-2); border:1px solid var(--panel-border); border-radius:12px;
         padding:14px; text-align:center; position:relative;
     }
-    .gauge-card .ss{font-family:var(--mono); font-size:.72em; color:var(--muted); letter-spacing:.5px;}
+    .gauge-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+    .gauge-card .ss{font-family:var(--mono); font-size:.72em; color:var(--muted); letter-spacing:.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
     .gauge-card .tname{font-weight:700; margin:2px 0 8px; font-size:.95em;}
     .gauge-wrap{position:relative; width:150px; height:82px; margin:0 auto;}
     .gauge-num{position:absolute; bottom:2px; left:0; right:0; text-align:center; font-family:var(--mono); font-weight:700; font-size:1.3em;}
@@ -179,7 +180,7 @@
     .phase-mini span{display:flex; align-items:center; gap:4px;}
     .dot{width:8px;height:8px;border-radius:50%; display:inline-block;}
     .dot.r{background:var(--r-phase);} .dot.y{background:var(--y-phase);} .dot.b{background:var(--b-phase);}
-    .gauge-badge{position:absolute; top:10px; left:10px; font-size:.68em; padding:2px 8px; border-radius:20px; font-family:var(--mono); font-weight:700;}
+    .gauge-badge{flex:0 0 auto; white-space:nowrap; font-size:.68em; padding:2px 8px; border-radius:20px; font-family:var(--mono); font-weight:700;}
     .unit-line{margin-top:8px; font-size:.72em; color:var(--muted); display:flex; align-items:center; justify-content:center; gap:5px;}
 
     /* ---------- Severity badges ---------- */
@@ -400,8 +401,9 @@
         border:1px solid #d6dee8; border-radius:10px; padding:10px 12px 8px; background:#fbfcfe;
         break-inside:avoid; page-break-inside:avoid; text-align:center;
     }
-    .letter-sheet .gtop{display:flex; justify-content:space-between; font-size:8pt; color:#6b7c93; margin-bottom:2px;}
-    .letter-sheet .gsz{background:#eef4fa; border-radius:12px; padding:1px 8px; color:#0f3c73; font-weight:600;}
+    .letter-sheet .gtop{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:8pt; color:#6b7c93; margin-bottom:2px;}
+    .letter-sheet .gss{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
+    .letter-sheet .gsz{flex:0 0 auto; white-space:nowrap; background:#eef4fa; border-radius:12px; padding:1px 8px; color:#0f3c73; font-weight:600;}
     .letter-sheet .gname{font-family:'Sultan bold',Sultan,'Amiri',serif; font-weight:bold; font-size:10.5pt; margin-bottom:2px;}
     .letter-sheet .gsvg{width:100%; height:auto; display:block; direction:ltr;}
     .letter-sheet .gph{display:flex; justify-content:center; gap:10px; font-size:8.5pt; color:#33465e; margin-top:2px;}
@@ -2809,8 +2811,10 @@ function renderGauges(txs){
     const grid = document.getElementById('gauge-grid');
     grid.innerHTML = top.map((t,i)=>`
         <div class="gauge-card">
-            <span class="gauge-badge" style="background:${gaugeColor(t.loadPct)}22;color:${gaugeColor(t.loadPct)}">${t.size} ك.ف.أ${estMark(t)}</span>
-            <div class="ss">${t.area} · SS ${t.ssNum}</div>
+            <div class="gauge-top">
+                <div class="ss">${t.area} · SS ${t.ssNum}</div>
+                <span class="gauge-badge" style="background:${gaugeColor(t.loadPct)}22;color:${gaugeColor(t.loadPct)}">${t.size} ك.ف.أ${estMark(t)}</span>
+            </div>
             <div class="tname">${t.tName}</div>
             <div class="gauge-wrap">
                 <canvas id="gauge-${i}"></canvas>
@@ -2877,8 +2881,10 @@ function renderCableGauges(txs){
         const phase = cableDrivingPhase(c);
         return `
         <div class="gauge-card">
-            <span class="gauge-badge" style="background:${color}22;color:${color}">${Math.round(c.maxLoad)} A</span>
-            <div class="ss">${c.area} · SS ${c.ssNum}</div>
+            <div class="gauge-top">
+                <div class="ss">${c.area} · SS ${c.ssNum}</div>
+                <span class="gauge-badge" style="background:${color}22;color:${color}">${Math.round(c.maxLoad)} A</span>
+            </div>
             <div class="tname">${c.tName} · كيبل ${c.feeder}</div>
             <div class="gauge-wrap">
                 <canvas id="cable-gauge-${i}"></canvas>

@@ -102,7 +102,7 @@
         font-size:.85em; line-height:1.8;
     }
     body.report-mode #data-source-banner, body.letter-mode #data-source-banner,
-    body.letter-options-mode #data-source-banner{display:none !important;}
+    body.letter-options-mode #data-source-banner, body.progress-mode #data-source-banner{display:none !important;}
 
     /* ---------- Settings drawer ---------- */
     #settings-panel, #report-panel{
@@ -271,6 +271,16 @@
     body.report-mode #settings-panel, body.report-mode #report-panel{ display:none !important; }
     body.report-mode #report-view{ display:block; }
     body.report-mode .toolbar{ display:none !important; }
+
+    /* ---------- Progress report view (تقرير الإنجاز، مستقل وقابل للطباعة A4) ---------- */
+    #progress-view{display:none;}
+    body.progress-mode #dashboard, body.progress-mode #empty-state,
+    body.progress-mode #settings-panel, body.progress-mode #report-panel{ display:none !important; }
+    body.progress-mode #progress-view{ display:block; }
+    body.progress-mode .toolbar{ display:none !important; }
+    @media print{
+        body.progress-mode .report-doc{ page-break-inside:avoid; }
+    }
 
     /* ---------- Official letter view (full page with back button) ---------- */
     #letter-view{display:none;}
@@ -911,7 +921,10 @@
             <div class="panel">
                 <div class="panel-head">
                     <h2>🏆 تقارير الإنجاز — مقارنة عدد المحولات المُدخلة لكل مراقبة</h2>
-                    <span class="count" id="progress-office-count">0</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span class="count" id="progress-office-count">0</span>
+                        <button class="btn primary" onclick="openProgressReport()">🖨️ طباعة تقرير الإنجاز (A4)</button>
+                    </div>
                 </div>
                 <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">
                     يقارن هذا التقرير عدد المحولات التي تم إدخال قراءاتها لكل مراقبة، مرتبة تنازلياً حسب كمية الإنجاز.
@@ -1120,6 +1133,47 @@
     </div>
 </div>
 
+<div id="progress-view">
+    <div class="report-actions">
+        <button class="btn" onclick="exitProgressReport()">⬅️ رجوع للوحة الرئيسية</button>
+        <button class="btn primary" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+    </div>
+    <div class="report-doc">
+        <div class="report-doc-header">
+            <div class="brand">
+                <img class="emblem" src="kuwait-emblem.png" alt="شعار دولة الكويت" onerror="handleEmblemError(this)">
+                <div id="progress-emblem-fallback" class="emblem-fallback" style="display:none;">
+                    <span class="band g"></span><span class="band w"></span><span class="band r"></span><span class="blk"></span>
+                </div>
+                <div>
+                    <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
+                    <div style="font-weight:700;">قسم التشغيل</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-title">🏆 تقرير الإنجاز — مقارنة عدد المحولات المُدخلة لكل مراقبة</div>
+        <div class="report-subtitle">نظام تحليل أحمال لوحات الضغط المنخفض</div>
+
+        <div class="report-meta" id="progress-report-meta"></div>
+
+        <div class="chart-box" style="height:230px; margin-bottom:16px;"><canvas id="progressReportChart"></canvas></div>
+
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr>
+                    <th>#</th><th>المراقبة</th><th>عدد المحولات المُدخلة</th><th>عدد المحطات</th><th>عدد الكيبلات (المغذيات)</th><th>% من الإجمالي</th><th>مقارنة</th>
+                </tr></thead>
+                <tbody id="progress-report-body"></tbody>
+            </table>
+        </div>
+
+        <div class="report-sign">
+            <div><span class="lbl">تاريخ الإصدار</span><br><b id="progress-report-date">—</b></div>
+        </div>
+    </div>
+</div>
+
 <footer>نظام تحليل أحمال لوحات الضغط المنخفض — قسم التشغيل · يعمل بالكامل داخل المتصفح ولا يرفع أي بيانات لأي خادم خارجي</footer>
 
 <script>
@@ -1170,7 +1224,7 @@ const RISK_LIB = {
 let loadedOffices = {};   // { officeName: XLSX.Workbook }
 let officeDataSource = {};   // { officeName: 'live' | 'fallback' }
 let lastSelection = { office:'__all__', area:'__all__' };
-let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, reportDangerTx:null, reportTop20:null, progress:null, gauges:[], cableGauges:[] };
+let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, reportDangerTx:null, reportTop20:null, progress:null, progressReport:null, gauges:[], cableGauges:[] };
 let globalTx = [];
 
 /* =========================================================
@@ -2709,11 +2763,18 @@ window.addEventListener('beforeprint', ()=>{
         if(reportsPane) reportsPane.style.display = 'block';
         renderDangerTxChart(); renderTop20CablesChart();
     }
-    // Dashboard + custom report print landscape; the official letter keeps its own A4 portrait page.
-    if(!document.body.classList.contains('letter-mode')){
+    // Dashboard + custom report print landscape; the official letter and the progress
+    // report (تقرير الإنجاز) each keep their own portrait A4 page (added below).
+    if(!document.body.classList.contains('letter-mode') && !document.body.classList.contains('progress-mode')){
         const style = document.createElement('style');
         style.id = 'print-landscape-override';
         style.textContent = '@page{ size: A4 landscape; margin:10mm; }';
+        document.head.appendChild(style);
+    }
+    if(document.body.classList.contains('progress-mode')){
+        const style = document.createElement('style');
+        style.id = 'print-progress-portrait';
+        style.textContent = '@page{ size: A4 portrait; margin:14mm; }';
         document.head.appendChild(style);
     }
 });
@@ -2731,6 +2792,8 @@ window.addEventListener('afterprint', ()=>{
     switchDashTab(activeDashTab);
     const landscapeStyle = document.getElementById('print-landscape-override');
     if(landscapeStyle) landscapeStyle.remove();
+    const progressPortraitStyle = document.getElementById('print-progress-portrait');
+    if(progressPortraitStyle) progressPortraitStyle.remove();
 });
 
 /* =========================================================
@@ -3159,6 +3222,56 @@ function renderProgressChart(){
             scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor}, grid:{display:false}} },
             plugins:{ legend:{display:false}, title:{display:true, text:'مقارنة عدد المحولات المُدخلة حسب المراقبة', color:textColor, font:{size:14}} } }
     });
+}
+function openProgressReport(){
+    if(!lastProgressRows.length) return;
+    const rows = lastProgressRows;
+    const totalTx = rows.reduce((s,r)=>s+r.txCount,0);
+    const maxTx = rows.length ? rows[0].txCount : 0;
+    const minTx = rows.length ? rows[rows.length-1].txCount : 0;
+    const dateStr = new Date().toLocaleDateString('ar-KW', {year:'numeric', month:'long', day:'numeric'});
+
+    document.getElementById('progress-report-meta').innerHTML = `
+        <div><span class="lbl">عدد المراقبات</span><b>${rows.length}</b></div>
+        <div><span class="lbl">إجمالي المحولات المُدخلة</span><b>${totalTx}</b></div>
+        <div><span class="lbl">الأعلى إنجازاً</span><b>${esc(rows[0] ? rows[0].office : '—')}</b></div>
+        <div><span class="lbl">تاريخ الإصدار</span><b>${dateStr}</b></div>
+    `;
+    document.getElementById('progress-report-date').innerText = dateStr;
+    document.getElementById('progress-report-body').innerHTML = rows.map((r,i)=>{
+        const pct = totalTx ? (r.txCount/totalTx*100) : 0;
+        const w = maxTx ? (r.txCount/maxTx*100) : 0;
+        const c = achieveColor(r.txCount, minTx, maxTx);
+        return `<tr>
+            <td class="num">${i+1}</td>
+            <td><b>${esc(r.office)}</b></td>
+            <td class="num"><b style="color:${c}">${r.txCount}</b></td>
+            <td class="num">${r.ssCount}</td>
+            <td class="num">${r.cableCount}</td>
+            <td class="num">${pct.toFixed(1)}%</td>
+            <td><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${w.toFixed(1)}%;background:${c}"></div></div></td>
+        </tr>`;
+    }).join('') || `<tr class="empty-row"><td colspan="7">لا توجد بيانات</td></tr>`;
+
+    document.body.classList.add('progress-mode');
+    window.scrollTo({top:0, behavior:'instant'});
+    // Chart.js can't size a canvas while its container is display:none — render
+    // it now that #progress-view is actually visible.
+    if(charts.progressReport) charts.progressReport.destroy();
+    const textColor = getCss('--muted');
+    const gridColor = getCss('--panel-border');
+    charts.progressReport = new Chart(document.getElementById('progressReportChart'), {
+        type:'bar',
+        data:{ labels: rows.map(r=>r.office), datasets:[{ label:'عدد المحولات المُدخلة', data: rows.map(r=>r.txCount),
+               backgroundColor: rows.map(r=> achieveColor(r.txCount, minTx, maxTx)), borderRadius:6 }] },
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor}, grid:{display:false}} },
+            plugins:{ legend:{display:false}, title:{display:true, text:'مقارنة عدد المحولات المُدخلة حسب المراقبة', color:textColor, font:{size:13}} } }
+    });
+}
+function exitProgressReport(){
+    document.body.classList.remove('progress-mode');
+    window.scrollTo({top:0, behavior:'instant'});
 }
 
 /* =========================================================

@@ -272,45 +272,62 @@
     body.report-mode #report-view{ display:block; }
     body.report-mode .toolbar{ display:none !important; }
 
-    /* ---------- Progress report view (تقرير الإنجاز، مستقل وقابل للطباعة A4) ---------- */
-    /* مستند بألوان ثابتة (ورق رسمي فاتح) بغض النظر عن وضع الموقع الفاتح/الداكن — مطابق لأسلوب الكتاب الرسمي */
-    #progress-view{display:none; background:#e9edf3; min-height:100vh; padding:24px 16px;}
+    /* ---------- Progress report view (تقرير الإنجاز، مستقل وقابل للطباعة A4 عمودي) ---------- */
+    #progress-view{display:none;}
     body.progress-mode #dashboard, body.progress-mode #empty-state,
     body.progress-mode #settings-panel, body.progress-mode #report-panel{ display:none !important; }
     body.progress-mode #progress-view{ display:block; }
     body.progress-mode .toolbar{ display:none !important; }
-    #progress-view .report-actions{ max-width:190mm; margin:0 auto 16px; }
-    #progress-view .report-doc{
+
+    /* ---------- Professional print-report look — shared by #report-view (التقرير المخصص، أفقي)
+       و #progress-view (تقرير الإنجاز، عمودي). ألوان ثابتة (ورق رسمي فاتح) بغض النظر عن وضع الموقع الفاتح/الداكن ---------- */
+    #report-view, #progress-view{ background:#e9edf3; min-height:100vh; padding:24px 16px; }
+    #report-view .report-actions, #progress-view .report-actions{ max-width:277mm; margin:0 auto 16px; }
+    #progress-view .report-actions{ max-width:190mm; }
+    .report-doc{
         background:#fff; color:#1a2733; border:1px solid #d3dae3; border-radius:10px;
-        max-width:190mm; margin:0 auto; padding:14mm 16mm; box-shadow:0 2px 16px rgba(20,30,45,.1);
+        max-width:277mm; margin:0 auto; padding:14mm 16mm; box-shadow:0 2px 16px rgba(20,30,45,.1);
     }
-    #progress-view .report-doc-header{
-        display:flex; align-items:center; gap:14px;
+    #progress-view .report-doc{ max-width:190mm; }
+    .report-doc-header{
+        display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
         border-bottom:2px solid #0f3c73; padding-bottom:14px; margin-bottom:14px;
     }
-    #progress-view .ministry-line{ color:#0a7d4f; font-weight:700; font-size:.85em; }
-    #progress-view .dept-line{ color:#0f3c73; font-weight:700; }
-    #progress-view .report-title{ color:#0f3c73; font-size:1.3em; font-weight:800; margin:4px 0 4px; }
-    #progress-view .report-subtitle{ color:#5a6b80; font-size:.85em; }
-    #progress-view .report-meta{
+    .report-doc .ministry-line{ color:#0a7d4f; font-weight:700; font-size:.85em; }
+    .report-doc .dept-line{ color:#0f3c73; font-weight:700; }
+    .report-doc .report-title{ color:#0f3c73; font-size:1.3em; font-weight:800; margin:4px 0 4px; }
+    .report-doc .report-subtitle{ color:#5a6b80; font-size:.85em; }
+    .report-doc .report-meta{
         display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px;
         background:#f4f7fb; border:1px solid #dde5ee; border-radius:9px;
         padding:12px 14px; margin:16px 0;
     }
-    #progress-view .report-meta div span.lbl{ color:#6b7c93; font-size:.72em; display:block; margin-bottom:2px; }
-    #progress-view .report-meta div b{ color:#1a2733; font-size:.95em; }
-    #progress-view .chart-box{ background:#fbfcfe; border:1px solid #dde5ee; }
-    #progress-view table{ width:100%; border-collapse:collapse; font-size:.85em; }
-    #progress-view th{ background:#0f3c73; color:#fff; font-weight:600; font-size:.78em; padding:9px 10px; position:static; white-space:nowrap; }
-    #progress-view td{ padding:8px 10px; border-bottom:1px solid #e4e9f0; color:#1a2733; white-space:nowrap; }
-    #progress-view tbody tr:nth-child(even){ background:#f7f9fc; }
-    #progress-view .progress-bar-wrap{ background:#e4e9f0; }
-    #progress-view .report-sign{ margin-top:20px; }
-    #progress-view .report-sign div{ border-top:1px solid #dde5ee; color:#6b7c93; }
+    .report-doc .report-meta div span.lbl{ color:#6b7c93; font-size:.72em; display:block; margin-bottom:2px; }
+    .report-doc .report-meta div b{ color:#1a2733; font-size:.95em; }
+    .report-doc .chart-box{ background:#fbfcfe; border:1px solid #dde5ee; }
+    .report-doc .kpi{ background:#f7f9fc; border:1px solid #dde5ee; }
+    .report-doc .kpi h3{ color:#6b7c93; }
+    .report-doc .kpi .sub{ color:#8a97a8; }
+    .report-doc table{ width:100%; border-collapse:collapse; font-size:.85em; }
+    .report-doc th{ background:#0f3c73; color:#fff; font-weight:600; font-size:.78em; padding:9px 10px; position:static; }
+    .report-doc td{ padding:8px 10px; border-bottom:1px solid #e4e9f0; color:#1a2733; }
+    .report-doc tbody tr:nth-child(even){ background:#f7f9fc; }
+    .report-doc tbody tr:hover{ background:#eef4fb; }
+    .report-doc .progress-bar-wrap{ background:#e4e9f0; }
+    .report-doc .report-sign{ margin-top:20px; }
+    .report-doc .report-sign div{ border-top:1px solid #dde5ee; color:#6b7c93; }
+    .report-doc .report-section-title{ border-inline-start-color:#0f3c73; }
+    .report-doc .report-empty{ background:#eefaf3; color:#0a7d4f; }
+    .report-doc details.ref-card{ background:#f7f9fc; border:1px solid #dde5ee; }
+    .report-doc .ref-card .body{ color:#5a6b80; }
+    .report-doc .ref-card .body b{ color:#1a2733; }
+    .report-doc .ref-card .lim{ color:#0f3c73; }
+    #progress-view th, #progress-view td{ white-space:nowrap; }
     @media print{
-        body.progress-mode .report-doc{ page-break-inside:avoid; box-shadow:none !important; border-color:#ccc !important; }
+        body.progress-mode .report-doc{ page-break-inside:avoid; }
+        .report-doc{ box-shadow:none !important; border-color:#ccc !important; }
         body.progress-mode .report-doc-header{ display:flex !important; }
-        #progress-view{ background:#fff !important; padding:0; }
+        #report-view, #progress-view{ background:#fff !important; padding:0; }
     }
 
     /* ---------- Official letter view (full page with back button) ---------- */
@@ -565,13 +582,8 @@
     .lo-warn{color:var(--warn); font-size:.86em; display:none;}
 
     .report-actions{display:flex; gap:10px; margin-bottom:16px;}
-    .report-doc{
-        background:var(--panel); border:1px solid var(--panel-border); border-radius:var(--radius);
-        padding:30px 34px;
-    }
-    .report-doc-header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; border-bottom:2px solid var(--panel-border); padding-bottom:16px; margin-bottom:18px; flex-wrap:wrap;}
     .report-doc-header .brand{align-items:center;}
-    .report-title{font-family:var(--disp); font-size:1.4em; font-weight:800; margin:14px 0 4px; color:var(--crit);}
+    .report-title{font-family:var(--disp); font-size:1.4em; font-weight:800; margin:14px 0 4px;}
     .report-subtitle{color:var(--muted); font-size:.9em;}
     .report-meta{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; background:var(--panel-2); border:1px solid var(--panel-border); border-radius:10px; padding:14px 16px; margin-bottom:20px;}
     .report-meta div b{display:block; color:var(--text); font-size:.95em; margin-top:2px;}
@@ -1068,7 +1080,7 @@
                 </div>
                 <div>
                     <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
-                    <div style="font-weight:700;" id="report-office-line">قسم التشغيل</div>
+                    <div class="dept-line" id="report-office-line">قسم التشغيل</div>
                 </div>
             </div>
         </div>
@@ -1178,7 +1190,7 @@
                 </div>
                 <div>
                     <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
-                    <div class="dept-line">قسم التشغيل</div>
+                    <div class="dept-line">إدارة شبكات التوزيع الكهربائية / مراقبة الفروانية</div>
                 </div>
             </div>
         </div>
@@ -3254,7 +3266,8 @@ function renderProgressChart(){
         data:{ labels: rows.map(r=>r.office), datasets:[{ label:'عدد المحولات المُدخلة', data: rows.map(r=>r.txCount),
                backgroundColor: rows.map(r=> achieveColor(r.txCount, minTx, maxTx)), borderRadius:6 }] },
         options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor}, grid:{display:false}} },
+            scales:{ x:{reverse:true, ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true},
+                     y:{position:'right', ticks:{color:getCss('--text'), font:{weight:'bold'}}, grid:{display:false}} },
             plugins:{ legend:{display:false}, title:{display:true, text:'مقارنة عدد المحولات المُدخلة حسب المراقبة', color:textColor, font:{size:14}} } }
     });
 }
@@ -3300,7 +3313,8 @@ function openProgressReport(){
         data:{ labels: rows.map(r=>r.office), datasets:[{ label:'عدد المحولات المُدخلة', data: rows.map(r=>r.txCount),
                backgroundColor: rows.map(r=> achieveColor(r.txCount, minTx, maxTx)), borderRadius:6 }] },
         options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
-            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor}, grid:{display:false}} },
+            scales:{ x:{reverse:true, ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true},
+                     y:{position:'right', ticks:{color:'#1a2733', font:{weight:'bold'}}, grid:{display:false}} },
             plugins:{ legend:{display:false}, title:{display:true, text:'مقارنة عدد المحولات المُدخلة حسب المراقبة', color:textColor, font:{size:13}} } }
     });
 }

@@ -320,8 +320,8 @@
         text-decoration:underline; text-underline-offset:5px; margin:14px 0 18px;
     }
 
-    .letter-sheet .lto{margin:6px 0 0; display:flex; justify-content:space-between; align-items:baseline; gap:20px;}
-    .letter-sheet .lsalut{margin:14px 0 18px; text-align:center; font-size:16pt;}
+    .letter-sheet .lto{margin:6px 0 0; display:flex; justify-content:space-between; align-items:baseline; gap:20px; white-space:nowrap;}
+    .letter-sheet .lsalut{margin:14px 0 18px; text-align:right; padding-right:70px; font-size:16pt;}
     .letter-sheet .lsubject{margin:20px 0 16px; text-align:center; line-height:1.9;}
     .letter-sheet .lsubject u{text-underline-offset:6px;}
     .letter-sheet p.ltxt{margin:0 0 14px; text-align:justify; text-justify:inter-word; line-height:2.05; font-size:16pt;}
@@ -332,45 +332,6 @@
     .letter-sheet th, .letter-sheet td{border:1px solid #000; padding:5px 6px; text-align:center; color:#000; line-height:1.6;}
     .letter-sheet th{background:#e8e8e8; font-family:'Sultan bold',Sultan,'Amiri',serif; font-weight:bold;}
     .letter-sheet ol{line-height:2.05; font-size:16pt; padding-right:22px; text-align:justify; margin:0 0 14px;}
-    /* جدول الأسباب والحلول التفصيلي */
-    .letter-sheet table.tremedy{font-size:10pt; table-layout:fixed;}
-    .letter-sheet table.tremedy th, .letter-sheet table.tremedy td{padding:5px 5px; line-height:1.55;}
-    .letter-sheet table.tremedy td.wrap{text-align:justify; word-wrap:break-word; overflow-wrap:break-word;}
-    .letter-sheet table.tremedy th:nth-child(1), .letter-sheet table.tremedy td:nth-child(1){width:3.2%;}
-    .letter-sheet table.tremedy th:nth-child(2), .letter-sheet table.tremedy td:nth-child(2){width:7%;}
-    .letter-sheet table.tremedy th:nth-child(3), .letter-sheet table.tremedy td:nth-child(3){width:9%;}
-    .letter-sheet table.tremedy th:nth-child(4), .letter-sheet table.tremedy td:nth-child(4){width:9%;}
-    .letter-sheet table.tremedy th:nth-child(5), .letter-sheet table.tremedy td:nth-child(5){width:11%;}
-    .letter-sheet table.tremedy th:nth-child(6), .letter-sheet table.tremedy td:nth-child(6){width:9%;}
-    .letter-sheet table.tremedy th:nth-child(7), .letter-sheet table.tremedy td:nth-child(7){width:25.4%;}
-    .letter-sheet table.tremedy th:nth-child(8), .letter-sheet table.tremedy td:nth-child(8){width:26.4%;}
-    .letter-sheet table{page-break-inside:auto;}
-    .letter-sheet tr{page-break-inside:avoid; page-break-after:auto;}
-    .letter-sheet thead{display:table-header-group;}
-    .letter-sheet .lwish{text-align:center; margin:22px 0 6px; font-size:16pt;}
-    .letter-sheet .lsigner{text-align:center; font-family:'Sultan bold',Sultan,'Amiri',serif; font-size:18pt; font-weight:bold; margin-top:6px;}
-
-    /* كتلة النسخ والتوقيع الصغيرة */
-    .letter-sheet .lcc{margin-top:46px; font-family:Arial,Helvetica,sans-serif; font-size:10pt; line-height:1.75;}
-    .letter-sheet .lcc b{font-weight:bold;}
-    /* شريط التذييل الرسمي — نفس تدرج ألوان الورق الرسمي */
-    .letter-sheet .lbar{
-        height:13px; margin:0 -44px;
-        background:linear-gradient(90deg,#ffffff 0%,#76cd9d 8%,#13ada9 30%,#15ada6 42%,#0296b5 60%,#007eaf 70%,#0468a2 80%,#035895 92%,#ffffff 100%);
-    }
-    .letter-sheet .lweb{
-        text-align:center; margin-top:8px;
-        font-family:'Times New Roman',Times,serif; font-size:10pt; font-weight:bold;
-        letter-spacing:1.5px; color:#035895;
-    }
-    .letter-sheet .lcontact{
-        display:flex; justify-content:space-between; align-items:center;
-        font-size:9.5pt; color:#333; margin-top:8px;
-    }
-    .letter-sheet .lcontact .en{font-family:'Times New Roman',Times,serif; font-size:9.5pt;}
-    .letter-sheet .lcontact .ar{font-family:'Sultan normal',Sultan,'Amiri',serif; font-size:9.5pt;}
-    .letter-sheet .ed:focus{background:#fffbe6; outline:none;}
-
     /* مؤشرات الكتاب */
     .letter-sheet .lkrow{display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:12px; margin:12px 0 14px;}
     .letter-sheet .lk{
@@ -401,9 +362,8 @@
         border:1px solid #d6dee8; border-radius:10px; padding:10px 12px 8px; background:#fbfcfe;
         break-inside:avoid; page-break-inside:avoid; text-align:center;
     }
-    .letter-sheet .gtop{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:8pt; color:#6b7c93; margin-bottom:2px;}
-    .letter-sheet .gss{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
-    .letter-sheet .gsz{flex:0 0 auto; white-space:nowrap; background:#eef4fa; border-radius:12px; padding:1px 8px; color:#0f3c73; font-weight:600;}
+    .letter-sheet .gtop{display:flex; justify-content:space-between; font-size:8pt; color:#6b7c93; margin-bottom:2px;}
+    .letter-sheet .gsz{background:#eef4fa; border-radius:12px; padding:1px 8px; color:#0f3c73; font-weight:600;}
     .letter-sheet .gname{font-family:'Sultan bold',Sultan,'Amiri',serif; font-weight:bold; font-size:10.5pt; margin-bottom:2px;}
     .letter-sheet .gsvg{width:100%; height:auto; display:block; direction:ltr;}
     .letter-sheet .gph{display:flex; justify-content:center; gap:10px; font-size:8.5pt; color:#33465e; margin-top:2px;}
@@ -463,8 +423,35 @@
     .letter-sheet .chsub{font-size:8.5pt; color:#6b7c93; margin:0 0 6px 11px; padding-right:11px;}
     .letter-sheet .chsvg{width:100%; height:auto; display:block; direction:ltr;}
     .letter-sheet .chsvg text{font-family:'Sultan normal',Sultan,'Amiri',serif;}
+
+    .letter-sheet table{page-break-inside:auto;}
+    .letter-sheet tr{page-break-inside:avoid; page-break-after:auto;}
+    .letter-sheet thead{display:table-header-group;}
     .letter-sheet .lclause{line-height:2.05; font-size:16pt; text-align:justify; margin:0 0 12px;}
     .letter-sheet .lclause b{font-family:'Sultan bold',Sultan,'Amiri',serif;}
+    .letter-sheet .lwish{text-align:center; margin:22px 0 6px; font-size:16pt;}
+    .letter-sheet .lsigner{text-align:center; font-family:'Sultan bold',Sultan,'Amiri',serif; font-size:18pt; font-weight:bold; margin-top:6px;}
+
+    /* كتلة النسخ والتوقيع الصغيرة */
+    .letter-sheet .lcc{margin-top:46px; font-family:Arial,Helvetica,sans-serif; font-size:10pt; line-height:1.75;}
+    .letter-sheet .lcc b{font-weight:bold;}
+    /* شريط التذييل الرسمي — نفس تدرج ألوان الورق الرسمي */
+    .letter-sheet .lbar{
+        height:13px; margin:0 -44px;
+        background:linear-gradient(90deg,#ffffff 0%,#76cd9d 8%,#13ada9 30%,#15ada6 42%,#0296b5 60%,#007eaf 70%,#0468a2 80%,#035895 92%,#ffffff 100%);
+    }
+    .letter-sheet .lweb{
+        text-align:center; margin-top:8px;
+        font-family:'Times New Roman',Times,serif; font-size:10pt; font-weight:bold;
+        letter-spacing:1.5px; color:#035895;
+    }
+    .letter-sheet .lcontact{
+        display:flex; justify-content:space-between; align-items:center;
+        font-size:9.5pt; color:#333; margin-top:8px;
+    }
+    .letter-sheet .lcontact .en{font-family:'Times New Roman',Times,serif; font-size:9.5pt;}
+    .letter-sheet .lcontact .ar{font-family:'Sultan normal',Sultan,'Amiri',serif; font-size:9.5pt;}
+    .letter-sheet .ed:focus{background:#fffbe6; outline:none;}
 
     @media print{
         body.letter-mode{background:#fff; padding:0;}
@@ -936,28 +923,19 @@
     </div>
 
     <div class="lo-step">
-      <h3><span class="num">2</span> قالب الكتاب</h3>
-      <div class="hint">اختر شكل الكتاب المطلوب إصداره</div>
-      <div class="lo-opts" id="lo-template">
-        <button class="lo-opt on" data-tpl="memo" onclick="loPickTemplate(this)">📋 صيغة ١ — مذكرة داخلية (تفصيلية بالجدول والرسوم)</button>
-        <button class="lo-opt" data-tpl="formal" onclick="loPickTemplate(this)">📜 صيغة ٢ — كتاب رسمي مختصر (فقرات مرقمة وملخص)</button>
-      </div>
-    </div>
-
-    <div class="lo-step">
-      <h3><span class="num">3</span> التوجيه إلى</h3>
+      <h3><span class="num">2</span> التوجيه إلى</h3>
       <div class="hint">اختر الجهة الموجّه إليها الكتاب</div>
       <div class="lo-opts" id="lo-recipient"></div>
     </div>
 
     <div class="lo-step">
-      <h3><span class="num">4</span> المراقبة</h3>
-      <div class="hint">اختر المراقبة — تُعرض هنا المراقبات المحمّلة فعلياً من الملفات المرفوعة</div>
+      <h3><span class="num">3</span> المراقبة</h3>
+      <div class="hint">اختر المراقبة — تُعرض هنا المراقبات المحمّلة فعلياً من الملفات</div>
       <div class="lo-opts" id="lo-office"></div>
     </div>
 
     <div class="lo-step">
-      <h3><span class="num">5</span> المناطق المطلوبة</h3>
+      <h3><span class="num">4</span> المناطق المطلوبة</h3>
       <div class="hint">يمكنك اختيار أكثر من منطقة</div>
       <div class="lo-tools">
         <button class="lo-mini" onclick="loSelectAll('area',true)">تحديد الكل</button>
@@ -967,7 +945,7 @@
     </div>
 
     <div class="lo-step">
-      <h3><span class="num">6</span> درجة الحالة</h3>
+      <h3><span class="num">5</span> درجة الحالة</h3>
       <div class="hint">يمكنك اختيار أكثر من درجة — المحطات تُصنّف حسب أعلى حالة مسجّلة فيها</div>
       <div class="lo-opts" id="lo-sev">
         <button class="lo-opt sev-crit on" data-sev="crit" onclick="loToggleSev(this)">🔴 حرجة</button>
@@ -977,7 +955,7 @@
     </div>
 
     <div class="lo-step">
-      <h3><span class="num">7</span> المحطات</h3>
+      <h3><span class="num">6</span> المحطات</h3>
       <div class="hint">المحطات تظهر حسب المناطق والدرجات المختارة أعلاه</div>
       <div class="lo-tools">
         <button class="lo-mini" onclick="loSelectAll('ss',true)">الكل</button>
@@ -1488,9 +1466,7 @@ const RECIPIENTS = [
     'وكيل قطاع شبكات التوزيع الكهربائية',
     'وكيل وزارة الكهرباء والماء'
 ];
-let LO = { subject:'tx', template:'memo', recipient:RECIPIENTS[0], office:'', areas:new Set(), sevs:new Set(['crit','mid']), stations:new Set() };
-
-/* موضوع الكتاب: محولات (تحميل زائد + نيوترال) أو كيبلات (تجاوز سعة المغذي) — يُستخدم لتصفية سجل المخاطر */
+let LO = { subject:'tx', recipient:RECIPIENTS[0], office:'', areas:new Set(), sevs:new Set(['crit','mid']), stations:new Set(), customStations:false };
 const SUBJECT_TYPES = { tx:['overload','neutral'], cable:['feeder'] };
 function subjectRisks(txs){
     return computeRisks(txs).filter(r=> SUBJECT_TYPES[LO.subject].includes(r.type));
@@ -1499,16 +1475,17 @@ function loPickSubject(btn){
     LO.subject = btn.dataset.sub;
     [...btn.parentNode.children].forEach(c=>c.classList.remove('on'));
     btn.classList.add('on');
-    renderStationOpts(true);
-}
-function loPickTemplate(btn){
-    LO.template = btn.dataset.tpl;
-    [...btn.parentNode.children].forEach(c=>c.classList.remove('on'));
-    btn.classList.add('on');
+    LO.customStations = false;      // موضوع جديد = تصنيف جديد للمحطات، نرجع للتحديد التلقائي
+    renderStationOpts();
 }
 
-/* تصنيف كل محطة (ضمن مراقبة واحدة): crit / mid / ok حسب أعلى حالة فيها، وفق موضوع الكتاب المختار */
-function stationGrades(officeTx){
+function officeTxFor(office){
+    return globalTx.filter(t=>t.office===office);
+}
+
+/* تصنيف كل محطة (ضمن المراقبة المختارة): crit / mid / ok حسب أعلى حالة فيها */
+function stationGrades(){
+    const officeTx = officeTxFor(LO.office);
     const risks = subjectRisks(officeTx);
     const byStation = {};
     officeTx.forEach(t=>{
@@ -1526,10 +1503,6 @@ function stationGrades(officeTx){
 }
 const GRADE_LABEL = { crit:'🔴 حرجة', mid:'🟡 وسط', ok:'🟢 خضراء' };
 
-function officeTxFor(office){
-    return globalTx.filter(t=>t.office===office);
-}
-
 function openLetterOptions(){
     if(!globalTx.length){ alert('الرجاء إدراج ملف القراءات أولاً.'); return; }
     const offices = [...new Set(globalTx.map(t=>t.office))].sort();
@@ -1537,12 +1510,18 @@ function openLetterOptions(){
     const currentOfficeSel = document.getElementById('office-select');
     const preselected = currentOfficeSel && currentOfficeSel.value !== '__all__' ? currentOfficeSel.value : '';
     LO.office = offices.includes(LO.office) ? LO.office : (offices.includes(preselected) ? preselected : offices[0]);
-    LO.areas = new Set(officeTxFor(LO.office).map(t=>t.area));
 
+    const allAreas = [...new Set(officeTxFor(LO.office).map(t=>t.area))];
+    if(!LO.areas.size){
+        LO.areas = new Set(allAreas);              // أول فتح: الكل
+    } else {
+        LO.areas = new Set([...LO.areas].filter(a=> allAreas.includes(a))); // حافظ على اختيارك السابق
+        if(!LO.areas.size) LO.areas = new Set(allAreas);
+    }
     renderRecipientOpts();
     renderOfficeOpts();
     renderAreaOpts();
-    renderStationOpts(true);
+    renderStationOpts(false);
     document.body.classList.add('letter-options-mode');
     window.scrollTo({top:0, behavior:'instant'});
 }
@@ -1586,7 +1565,7 @@ function loToggleArea(btn){
     const a = btn.dataset.area;
     if(LO.areas.has(a)){ LO.areas.delete(a); btn.classList.remove('on'); }
     else { LO.areas.add(a); btn.classList.add('on'); }
-    renderStationOpts(true);
+    renderStationOpts();
 }
 function loToggleSev(btn){
     const sv = btn.dataset.sev;
@@ -1599,23 +1578,33 @@ function loSelectAll(kind, on){
         const areas = [...new Set(officeTxFor(LO.office).map(t=>t.area))];
         LO.areas = on ? new Set(areas) : new Set();
         renderAreaOpts();
-        renderStationOpts(true);
+        renderStationOpts();
     } else {
         const visible = visibleStations();
         LO.stations = on ? new Set(visible.map(s=>s.area+'||'+s.ss)) : new Set();
-        renderStationOpts(false);
+        LO.customStations = !on;   // «تحديد الكل» يرجع للوضع التلقائي — «إلغاء الكل» يفعّل اليدوي
+        renderStationRender();
     }
 }
 function visibleStations(){
-    return stationGrades(officeTxFor(LO.office))
+    return stationGrades()
         .filter(s=> LO.areas.has(s.area) && LO.sevs.has(s.grade))
         .sort((a,b)=> a.area.localeCompare(b.area,'ar') || String(a.ss).localeCompare(String(b.ss),'ar',{numeric:true}));
 }
-function renderStationOpts(reselectAll){
+function renderStationOpts(){
     const vis = visibleStations();
-    if(reselectAll) LO.stations = new Set(vis.map(s=>s.area+'||'+s.ss));
-    else LO.stations = new Set([...LO.stations].filter(k=> vis.some(s=> s.area+'||'+s.ss === k)));
+    if(!LO.customStations){
+        // الوضع التلقائي: كل المحطات الظاهرة محددة
+        LO.stations = new Set(vis.map(s=>s.area+'||'+s.ss));
+    } else {
+        // المستخدم عدّل يدوياً: حافظ على اختياره (مع حذف اللي اختفى بالفلترة)
+        LO.stations = new Set([...LO.stations].filter(k=> vis.some(s=> s.area+'||'+s.ss === k)));
+    }
 
+    renderStationRender();
+}
+function renderStationRender(){
+    const vis = visibleStations();
     const box = document.getElementById('lo-ss');
     if(!vis.length){
         box.innerHTML = '<div style="color:var(--muted-2); font-size:.88em; padding:8px;">لا توجد محطات مطابقة للمناطق والدرجات المختارة.</div>';
@@ -1636,6 +1625,7 @@ function renderStationOpts(reselectAll){
 }
 function loToggleStation(btn){
     const k = btn.dataset.key;
+    LO.customStations = true;
     if(LO.stations.has(k)){ LO.stations.delete(k); btn.classList.remove('on'); }
     else { LO.stations.add(k); btn.classList.add('on'); }
     const vis = visibleStations();
@@ -1653,7 +1643,7 @@ function buildLetterFromOptions(){
 }
 
 /* =========================================================
-   LETTER CONTENT — SVG charts, gauges, cable map, maneuvers
+   CHARTS — رسوم بيانية SVG داخل الكتاب (تطبع بدون مكتبات)
 ========================================================= */
 const CH = { crit:'#c0392b', high:'#e08a1e', ok:'#1e8449', blue:'#0f3c73', teal:'#13ada9', grid:'#c9d4e2', ink:'#12202f' };
 
@@ -1784,6 +1774,15 @@ function buildCharts(scopedTx, risks){
     const nHigh = vals.filter(v=>v==='mid').length;
     const nOk   = vals.filter(v=>v==='ok').length;
 
+    // أعلى 6 محولات تحميلاً
+    const topTx = [...scopedTx].sort((a,b)=>b.loadPct-a.loadPct).slice(0,6)
+        .map(t=>({ t: t.ssNum+' / '+t.tName, v: t.loadPct }));
+
+    // أعلى 6 كيبلات تحميلاً
+    let allF=[];
+    scopedTx.forEach(t=> t.feeders.forEach(f=> allF.push({ t: t.ssNum+' / '+f.feeder, v: f.loadPct })));
+    const topF = allF.sort((a,b)=>b.v-a.v).slice(0,6);
+
     // توزيع المخاطر حسب المنطقة
     const areaMap = {};
     scopedTx.forEach(t=>{
@@ -1810,6 +1809,7 @@ function buildCharts(scopedTx, risks){
     return `<div class="chgrid">
         ${card(isTx?'توزيع الحالة الفنية للمحولات':'توزيع الحالة الفنية (حسب الكيبلات)','نسبة المصنّف حرجاً من إجمالي النطاق', chDonut(nCrit,nHigh,nOk))}
         ${isTx ? card('توزيع المحولات حسب نسبة التحميل','عدد المحولات ضمن كل نطاق تحميل', chBands(scopedTx)) : ''}
+
         ${card('توزيع الحالات حسب المنطقة','عدد المحطات في كل تصنيف لكل منطقة', chStacked(areaRows))}
     </div>`;
 }
@@ -1859,7 +1859,7 @@ function buildChartsCompact(scopedTx, risks){
     </div>`;
 }
 
-/* ===== عناصر الكتاب: مؤشرات + عدادات + خريطة كيبلات + مناورات ===== */
+/* ---------- عناصر الكتاب الجديدة: مؤشرات + عدادات + مناورات ---------- */
 function lgColor(p){ return p>=100 ? '#c0392b' : (p>=80 ? '#e08a1e' : '#1e8449'); }
 
 function kpiBandHtml(scopedTx, crit, isTx){
@@ -1937,7 +1937,7 @@ function letterGauges(scopedTx, isTx){
         const c = lgColor(g.v);
         const val = Math.min(g.v, 130);
         const R=52, cx=75, cy=72;
-        const circ = Math.PI * R;
+        const circ = Math.PI * R;                      // نصف محيط
         const dash = (val/130) * circ;
         const phases = g.ph
             ? `<div class="gph"><span><i style="background:#c0392b"></i>${g.r}A</span><span><i style="background:#e08a1e"></i>${g.y}A</span><span><i style="background:#0f3c73"></i>${g.b}A</span></div>`
@@ -1996,6 +1996,7 @@ function letterCableMap(scopedTx){
 function letterManeuvers(scopedTx, isTx){
     const rows = [];
     if(isTx){
+        // نفس منطق «مقترحات مناورة الأحمال الداخلية» في الداشبورد حرفياً
         const overloaded = scopedTx.filter(t=>t.loadPct >= CFG.overloadHigh);
         const available = scopedTx.filter(t=>t.loadPct < CFG.shiftAvailable);
         [...new Set(overloaded.map(t=>t.ssNum+'|'+t.area))].forEach(key=>{
@@ -2022,6 +2023,7 @@ function letterManeuvers(scopedTx, isTx){
         });
         rows.sort((a,b)=>b.ovPct-a.ovPct);
     } else {
+        // كتاب الكيبلات: نفس الفكرة على مستوى مغذيات اللوحة الواحدة
         scopedTx.forEach(t=>{
             if(!t.feeders.length) return;
             const stressed = t.feeders.filter(f=>f.loadPct>=CFG.feederWarnPct);
@@ -2064,7 +2066,7 @@ function openOfficialLetter(){
     const officeName = LO.office || 'المراقبة';
     const recipient = LO.recipient || RECIPIENTS[0];
 
-    // نطاق الكتاب: مراقبة واحدة محددة + المحطات المختارة منها فقط
+    // نطاق الكتاب: محطات المراقبة المختارة فقط
     const officeTx = officeTxFor(LO.office);
     const picked = LO.stations;
     const scopedTx = picked && picked.size
@@ -2073,13 +2075,15 @@ function openOfficialLetter(){
     const areas = [...new Set(scopedTx.map(t=>t.area))];
 
     const subjName = LO.subject==='tx' ? 'محولات المراقبة' : 'كيبلات المراقبة';
+    const subjEn = LO.subject==='tx' ? 'Transformers Load Report' : 'LV Cables Load Report';
+
     const risks = subjectRisks(scopedTx);
     const crit = risks.filter(r=>r.severity==='crit');
     const high = risks.filter(r=>r.severity==='high');
     const cases = [...crit, ...high];
     const greenOnly = !cases.length;
-    const isTxSub = LO.subject === 'tx';
     const chartsSvg = buildCharts(scopedTx, risks);
+    const isTxSub = LO.subject === 'tx';
     const kpisHtml = letterKpis(scopedTx, crit, isTxSub);
     const gaugesHtml = isTxSub ? letterGauges(scopedTx, true) : '';
     const cableMapHtml = isTxSub ? '' : letterCableMap(scopedTx);
@@ -2106,10 +2110,22 @@ function openOfficialLetter(){
 
     const byType = {};
     sentCases.forEach(r=>{ byType[r.type] = (byType[r.type]||0) + 1; });
-    const typeNames = {overload:'تحميل زائد على المحول', neutral:'ارتفاع تيار النيوترال', feeder:'تجاوز سعة الكيبل الرئيسي'};
+    const typeNames = {overload:'تحميل زائد على المحول', unbalance:'عدم اتزان بين الفازات', neutral:'ارتفاع تيار النيوترال', feeder:'تجاوز سعة الكيبل الرئيسي'};
     const summaryLines = Object.keys(byType).map(k=>`${typeNames[k]||k}: ${byType[k]} حالة`).join(' — ') || 'لا توجد حالات حرجة أو مرتفعة';
 
-    if(LO.template === 'formal'){ renderFormalLetter({officeName, recipient, scopedTx, areas, risks, crit, high, cases, greenOnly, refNo, dateStr, summaryLines, subjName, useCrit, useHigh}); return; }
+    const rows = cases.map((r,i)=>`
+        <tr>
+            <td>${i+1}</td>
+            <td>${esc(r.ss)}</td>
+            <td>${esc(r.area)}</td>
+            <td>${esc(r.tName)}</td>
+            <td>${esc(r.label)}</td>
+            <td>${esc(r.value)}</td>
+            <td>${esc(r.threshold)}</td>
+            <td><b>${r.severity==='crit'?'حرج':'مرتفع'}</b></td>
+        </tr>`).join('');
+
+
 
     document.getElementById('letter-sheet').innerHTML = `
       <div class="lbody">
@@ -2123,14 +2139,14 @@ function openOfficialLetter(){
 
       <div class="lsubject">
         <u>الموضوع : مشروع تخفيف أحمال لوحات الجهد المنخفض — تقرير ${subjName}</u><br>
-        <u>بمحطات التحويل الثانوية 11 ك.ف / 415 فولت — مراقبة <span class="ed">${esc(officeName)}</span></u>
+        <u>بمحطات التحويل الثانوية 11 ك.ف / 415 فولت</u>
       </div>
 
       <p class="ltxt">بالإشــارة إلى الموضوع أعلاه ، وبناءً على أعمال المسح الميداني وتسجيل قراءات الأحمال على لوحات الجهد المنخفض ضمن نطاق مراقبة <span class="ed">${esc(officeName)}</span> ، وبعد تحليل القراءات المسجّلة لعدد <span class="ed">${scopedTx.length}</span> محوّل موزّعة على <span class="ed">${areas.length}</span> منطقة ، ${greenOnly ? 'نفيدكم بأنه لم تُرصد أي حالات خارجة عن الحدود التشغيلية المسموح بها .' : countPhrase}</p>
 
       ${greenOnly
         ? `<p class="ltxt">وقد أظهرت نتائج التحليل أن جميع المحطات المشمولة بهذا الكتاب تعمل ضمن الحدود التشغيلية المسموح بها ، ولم تُرصد أي حالات تستوجب المعالجة العاجلة ، مع استمرار المتابعة الدورية للأحمال خلال فترة الذروة الصيفية .</p>`
-        : `<p class="ltxt">وتتوزع هذه الحالات فنياً على النحو التالي : <span class="ed">${esc(summaryLines)}</span> . وحيث إن استمرار هذه الحالات دون معالجة قد يؤدي إلى ارتفاع درجات حرارة المحولات وتسارع تلف العزل واحتمالية الفصل المفاجئ للتغذية عن المشتركين خلال فترة الذروة الصيفية ، لذا يرجى التكرم بالاطلاع واتخاذ اللازم نحو معالجتها حسب الأولوية المبينة أدناه .</p>`}
+        : `<p class="ltxt">وتتوزع هذه الحالات فنياً على النحو التالي : <span class="ed">${esc(summaryLines)}</span> . وحيث إن استمرار هذه الحالات دون معالجة قد يؤدي إلى ارتفاع درجات حرارة المحولات وتسارع تلف العزل واحتمالية الفصل المفاجئ للتغذية عن المستهلكين خلال فترة الذروة الصيفية ، لذا يرجى التكرم بالاطلاع واتخاذ اللازم نحو معالجتها حسب الأولوية المبينة أدناه .</p>`}
 
       ${greenOnly ? '' : `<div class="lsec">أولاً : المؤشرات الرئيسية</div>
       ${kpisHtml}
@@ -2165,87 +2181,6 @@ function openOfficialLetter(){
         <span class="ar">ص.ب : 12 الكويت - الصفاة : 13001 - هاتف : 25371000</span>
       </div>
 
-      </div>
-    `;
-
-    letterEditOn = false;
-    document.getElementById('letter-edit-btn').innerText = '✏️ تفعيل التحرير';
-    document.body.classList.add('letter-mode');
-    window.scrollTo({top:0, behavior:'instant'});
-}
-
-/* ===== بناء الكتاب — الصيغة ٢: كتاب رسمي مختصر (فقرات مرقمة وملخص) ===== */
-function renderFormalLetter(d){
-    const sums = areaSummary(d.scopedTx, d.risks);
-    const sumRows = sums.map((a,i)=>`
-        <tr>
-            <td>${i+1}</td>
-            <td>${esc(a.area)}</td>
-            <td>${a.total}</td>
-            <td>${a.crit || '—'}</td>
-            <td>${a.mid || '—'}</td>
-            <td>${a.ok || '—'}</td>
-        </tr>`).join('');
-    const charts = buildChartsCompact(d.scopedTx, d.risks);
-    const topCases = d.cases.slice(0,5).map(r=> `${esc(r.label)} في المحطة ${esc(r.ss)} — ${esc(r.area)} (${esc(r.value)})`).join('، ');
-
-    document.getElementById('letter-sheet').innerHTML = `
-      <div class="lbody">
-      <div class="lhead"></div>
-
-      <div class="lto ed" style="margin-top:30px;">
-        <span>السيد / ${esc(d.recipient)}</span>
-        <span>المحترم</span>
-      </div>
-      <div class="lsalut">السلام عليكم ورحمة الله وبركاته ،،، وبعد</div>
-
-      <div class="lsubject">
-        <u>الموضوع : مشروع تخفيف أحمال لوحات الجهد المنخفض — تقرير ${d.subjName}</u><br>
-        <u>بمحطات التحويل الثانوية 11 ك.ف / 415 فولت — مراقبة <span class="ed">${esc(d.officeName)}</span></u>
-      </div>
-
-      <p class="ltxt">بالإشــارة إلى الموضوع أعلاه ، وفي ضوء نتائج المسح الميداني لقراءات الذروة على لوحات الجهد المنخفض ضمن نطاق مراقبة <span class="ed">${esc(d.officeName)}</span> ، نرفع لكم موجز الموقف الفني على النحو التالي :</p>
-
-      <div class="lclause"><b>أولاً :</b> شمل المسح عدد <span class="ed">${d.scopedTx.length}</span> محوّل توزيع موزّعة على <span class="ed">${d.areas.length}</span> منطقة ، وجرى تحليل قراءات الأطوار والنيوترال والمغذيات الرئيسية لكل محوّل وفق المعايير الفنية المعتمدة .</div>
-
-      ${d.greenOnly
-        ? `<div class="lclause"><b>ثانياً :</b> أظهرت النتائج أن جميع المحطات المشمولة تعمل ضمن الحدود التشغيلية المسموح بها ، ولم تُرصد أي حالات تستوجب المعالجة العاجلة ، مع استمرار المتابعة الدورية خلال فترة الذروة .</div>`
-        : `<div class="lclause"><b>ثانياً :</b> ${(d.useCrit && d.useHigh)
-            ? `أسفر التحليل عن رصد عدد <span class="ed">${d.crit.length + d.high.length}</span> حالة تستوجب المعالجة ، منها <b>${d.crit.length}</b> حالة حرجة و <b>${d.high.length}</b> حالة مرتفعة`
-            : (d.useCrit
-                ? `أسفر التحليل عن رصد عدد <span class="ed">${d.crit.length}</span> حالة مصنّفة حرجة تستوجب المعالجة العاجلة`
-                : `أسفر التحليل عن رصد عدد <span class="ed">${d.high.length}</span> حالة مصنّفة مرتفعة تستوجب المعالجة`)} ، وتتوزع فنياً على النحو التالي : <span class="ed">${esc(d.summaryLines)}</span> .</div>
-
-      <div class="lclause"><b>ثالثاً :</b> من أبرز الحالات المرصودة : <span class="ed">${topCases}</span>${d.cases.length>5 ? ' ، وتفاصيل باقي الحالات متاحة في تقرير التحليل الكامل' : ''} .</div>`}
-
-      <div class="lsec" style="margin-top:22px;">موجز الموقف حسب المناطق</div>
-      <table>
-        <thead><tr><th>م</th><th>المنطقة</th><th>عدد المحطات</th><th>حرجة</th><th>مرتفعة</th><th>سليمة</th></tr></thead>
-        <tbody>${sumRows}</tbody>
-      </table>
-
-      ${charts}
-
-      ${d.greenOnly ? '' : `<p class="ltxt" style="margin-top:14px;">وحيث إن استمرار الحالات المشار إليها دون معالجة قد يؤثر على استمرارية التغذية خلال فترة الذروة الصيفية ، نرجو التكرم بالاطلاع والتوجيه بما ترونه مناسباً .</p>`}
-
-      <p class="ltxt" style="text-align:center; margin-top:20px;">هذا ، وتفضلوا بقبول فائق الاحترام والتقدير ،،،</p>
-      <div class="lsigner ed">مراقب ${esc(d.officeName)}</div>
-
-      <div class="lcc">
-        <div><b>نســـخــــه : ${esc(d.recipient)}</b></div>
-        <div><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: مراقب ${esc(d.officeName)}</b></div>
-        <div class="ed"><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: م/</b></div>
-        <div><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(d.dateStr)}</b></div>
-      </div>
-      </div>
-
-      <div class="lfooter">
-      <div class="lbar"></div>
-      <div class="lweb">WWW.MEW.GOV.KW</div>
-      <div class="lcontact">
-        <span class="en">P.O.Box 12 Kuwait - Safat 13001 - Phone: 25371000</span>
-        <span class="ar">ص.ب : 12 الكويت - الصفاة : 13001 - هاتف : 25371000</span>
-      </div>
       </div>
     `;
 

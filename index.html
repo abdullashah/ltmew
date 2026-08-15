@@ -333,7 +333,7 @@
     .letter-sheet th{background:#e8e8e8; font-family:'Sultan bold',Sultan,'Amiri',serif; font-weight:bold;}
     .letter-sheet ol{line-height:2.05; font-size:16pt; padding-right:22px; text-align:justify; margin:0 0 14px;}
     /* مؤشرات الكتاب */
-    .letter-sheet .lkrow{display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:12px; margin:12px 0 14px;}
+    .letter-sheet .lkrow{display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:10px; margin:8px 0 10px;}
     .letter-sheet .lk{
         border:1px solid #d6dee8; border-radius:10px; padding:14px 16px 12px; background:#fbfcfe;
         text-align:center; position:relative; overflow:hidden;
@@ -341,15 +341,17 @@
     .letter-sheet .lk::before{content:''; position:absolute; top:0; right:0; left:0; height:4px; background:#13ada9;}
     .letter-sheet .lk.crit::before{background:#c0392b;}
     .letter-sheet .lk.warn::before{background:#e08a1e;}
+    .letter-sheet .lk.ok::before{background:#22c55e;}
     .letter-sheet .lk span{display:block; font-size:10pt; color:#5a6b80; margin-bottom:2px;}
     .letter-sheet .lk b{display:block; font-family:'Sultan bold',Sultan,'Amiri',serif; font-size:26pt; line-height:1.3; color:#0f3c73;}
     .letter-sheet .lk.crit b{color:#c0392b;}
     .letter-sheet .lk.warn b{color:#e08a1e;}
+    .letter-sheet .lk.ok b{color:#22c55e;}
     .letter-sheet .lk i{display:block; font-style:normal; font-size:8.5pt; color:#6b7c93;}
 
-    .letter-sheet .rmwrap{border:1px solid #d6dee8; border-radius:10px; padding:12px 16px; background:#fbfcfe; margin:0 0 16px;}
+    .letter-sheet .rmwrap{border:1px solid #d6dee8; border-radius:10px; padding:8px 14px; background:#fbfcfe; margin:0 0 10px;}
     .letter-sheet .rmttl{font-family:'Sultan bold',Sultan,'Amiri',serif; font-size:11.5pt; font-weight:bold; color:#0f3c73; border-right:3px solid #13ada9; padding-right:8px; margin-bottom:8px;}
-    .letter-sheet .rmrow{display:flex; align-items:center; gap:10px; padding:4px 0; font-size:10pt;}
+    .letter-sheet .rmrow{display:flex; align-items:center; gap:10px; padding:2px 0; font-size:10pt;}
     .letter-sheet .rmn{width:20px; height:20px; border-radius:50%; background:#0f3c73; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:8.5pt; font-weight:bold; flex:0 0 auto;}
     .letter-sheet .rmt{flex:0 0 34%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
     .letter-sheet .rmbar{flex:1; height:9px; border-radius:6px; background:#e8edf4; overflow:hidden; direction:ltr;}
@@ -430,11 +432,8 @@
     .letter-sheet .lclause{line-height:2.05; font-size:16pt; text-align:justify; margin:0 0 12px;}
     .letter-sheet .lclause b{font-family:'Sultan bold',Sultan,'Amiri',serif;}
     .letter-sheet .lwish{text-align:center; margin:22px 0 6px; font-size:16pt;}
-    .letter-sheet .lsigner{text-align:center; font-family:'Sultan bold',Sultan,'Amiri',serif; font-size:18pt; font-weight:bold; margin-top:6px;}
+    .letter-sheet .lsigner{text-align:left; padding-left:50px; font-family:'Sultan bold',Sultan,'Amiri',serif; font-size:18pt; font-weight:bold; margin-top:6px;}
 
-    /* كتلة النسخ والتوقيع الصغيرة */
-    .letter-sheet .lcc{margin-top:46px; font-family:Arial,Helvetica,sans-serif; font-size:10pt; line-height:1.75;}
-    .letter-sheet .lcc b{font-weight:bold;}
     /* شريط التذييل الرسمي — نفس تدرج ألوان الورق الرسمي */
     .letter-sheet .lbar{
         height:13px; margin:0 -44px;
@@ -1869,7 +1868,7 @@ function kpiBandHtml(officeTx, isTx){
     if(isTx){
         const top = [...officeTx].sort((a,b)=>b.loadPct-a.loadPct);
         const mx = top[0];
-        items = top.slice(0,10).map(t=>({label:`${t.ssNum} — ${t.area} / ${t.tName}`, v:t.loadPct}));
+        items = top.slice(0,15).map(t=>({label:`${t.ssNum} — ${t.area} / ${t.tName}`, v:t.loadPct}));
         return { maxTxt: mx ? mx.loadPct.toFixed(1)+'%' : '—',
                  maxSub: mx ? `المحطة ${esc(mx.ssNum)} — ${esc(mx.area)} / ${esc(mx.tName)}` : '',
                  items };
@@ -1886,18 +1885,31 @@ function kpiBandHtml(officeTx, isTx){
 
 /* عدد "المقاسة" دائمًا إجمالي المراقبة كاملة؛ "الحالات الحرجة" يبقى حسب النطاق/الاختيار الفعلي بالكتاب */
 function letterKpis(scopedTx, officeTx, crit, isTx){
+    const areaCount = new Set(officeTx.map(t=>t.area)).size;
     if(!isTx){
-        let measured=0;
-        officeTx.forEach(t=> t.feeders.forEach(f=>{ if((f.maxLoad||0) > 0) measured++; }));
+        let measured=0, sumLoad=0, safeCount=0;
+        officeTx.forEach(t=> t.feeders.forEach(f=>{
+            if((f.maxLoad||0) > 0){
+                measured++;
+                sumLoad += f.loadPct||0;
+                if((f.loadPct||0) < CFG.feederWarnPct) safeCount++;
+            }
+        }));
+        const avgLoad = measured ? (sumLoad/measured) : 0;
         const k = kpiBandHtml(officeTx, isTx);
         return `
         <div class="lkrow">
             <div class="lk"><span>إجمالي الكيبلات المقاسة</span><b>${measured}</b></div>
             <div class="lk crit"><span>إجمالي الحالات الحرجة من الكيبلات</span><b>${crit.length}</b></div>
             <div class="lk warn"><span>أعلى نسبة تحميل مسجلة لكيبل</span><b>${k.maxTxt}</b><i>${k.maxSub}</i></div>
+            <div class="lk"><span>متوسط نسبة تحميل الكيبلات</span><b>${avgLoad.toFixed(1)}%</b></div>
+            <div class="lk"><span>عدد المناطق المشمولة</span><b>${areaCount}</b></div>
+            <div class="lk ok"><span>كيبلات ضمن الحدود الآمنة</span><b>${safeCount}</b></div>
         </div>`;
     }
     const k = kpiBandHtml(officeTx, isTx);
+    const avgLoad = officeTx.length ? (officeTx.reduce((s,t)=>s+(t.loadPct||0),0)/officeTx.length) : 0;
+    const safeCount = officeTx.filter(t=>(t.loadPct||0) < CFG.overloadHigh).length;
     const rank = k.items.map((it,i)=>{
         const c = lgColor(it.v);
         const w = Math.min(100, it.v/1.4);
@@ -1913,25 +1925,28 @@ function letterKpis(scopedTx, officeTx, crit, isTx){
         <div class="lk"><span>إجمالي المحولات المقاسة</span><b>${officeTx.length}</b></div>
         <div class="lk crit"><span>إجمالي الحالات الحرجة</span><b>${crit.length}</b></div>
         <div class="lk warn"><span>أعلى نسبة تحميل مسجلة</span><b>${k.maxTxt}</b><i>${k.maxSub}</i></div>
+        <div class="lk"><span>متوسط نسبة التحميل</span><b>${avgLoad.toFixed(1)}%</b></div>
+        <div class="lk"><span>عدد المناطق المشمولة</span><b>${areaCount}</b></div>
+        <div class="lk ok"><span>محولات ضمن الحدود الآمنة</span><b>${safeCount}</b></div>
     </div>
     <div class="rmwrap">
-        <div class="rmttl">أعلى ${isTx?'المحولات':'الكيبلات'} تحميلاً (10)</div>
+        <div class="rmttl">أعلى المحولات تحميلاً (15)</div>
         ${rank}
     </div>`;
 }
 
-/* لوحة العدادات: دائمًا أعلى 12 من إجمالي المراقبة (officeTx)، بغض النظر عن المحطات المختارة بالكتاب */
+/* لوحة العدادات: دائمًا أعلى 9 من إجمالي المراقبة (officeTx)، بغض النظر عن المحطات المختارة بالكتاب */
 function letterGauges(officeTx, isTx){
     let top;
     if(isTx){
-        top = [...officeTx].sort((a,b)=>b.loadPct-a.loadPct).slice(0,12)
+        top = [...officeTx].sort((a,b)=>b.loadPct-a.loadPct).slice(0,9)
             .map(t=>({ ss:t.ssNum, area:t.area, name:t.tName, size:(t.size?t.size+' ك.ف.أ':''), v:t.loadPct,
                        r:Math.round(t.r||0), y:Math.round(t.y||0), b:Math.round(t.b||0), ph:true }));
     } else {
         let all=[];
         officeTx.forEach(t=> t.feeders.forEach(f=> all.push({ ss:t.ssNum, area:t.area, name:t.tName+' — '+f.feeder,
             size:'300 مم²', v:f.loadPct, a:Math.round(f.maxLoad||0), ph:false })));
-        top = all.sort((a,b)=>b.v-a.v).slice(0,12);
+        top = all.sort((a,b)=>b.v-a.v).slice(0,9);
     }
     const cards = top.map(g=>{
         const c = lgColor(g.v);
@@ -2075,7 +2090,7 @@ function openOfficialLetter(){
     // عدد المحولات/المناطق المذكور بالكتاب دائمًا إجمالي المراقبة كاملة، بغض النظر عن المحطات المختارة
     const officeAreas = [...new Set(officeTx.map(t=>t.area))];
 
-    const subjName = LO.subject==='tx' ? 'محولات المراقبة' : 'كيبلات المراقبة';
+    const subjName = `تقرير ${LO.subject==='tx' ? 'محولات' : 'كيبلات'} مراقبة ${esc(officeName)}`;
     const subjEn = LO.subject==='tx' ? 'Transformers Load Report' : 'LV Cables Load Report';
 
     const risks = subjectRisks(scopedTx);
@@ -2139,8 +2154,8 @@ function openOfficialLetter(){
       <div class="lsalut">تحية طيبة وبعد ،،،</div>
 
       <div class="lsubject">
-        <u>الموضوع : مشروع متابعة أحمال لوحة الجهد المنخفض — تقرير ${subjName}</u><br>
-        <u>بمحطات التحويل الثانوية 11 ك.ف / 415 فولت</u>
+        <u>الموضوع : مشروع متابعة أحمال لوحة الجهد المنخفض</u><br>
+        <u>${subjName}</u>
       </div>
 
       <p class="ltxt">بالإشــارة إلى الموضوع أعلاه ، وبناءً على أعمال المسح الميداني وتسجيل قراءات الأحمال على لوحات الجهد المنخفض ضمن نطاق مراقبة <span class="ed">${esc(officeName)}</span> ، وبعد تحليل القراءات المسجّلة لعدد <span class="ed">${officeTx.length}</span> محوّل موزّعة على <span class="ed">${officeAreas.length}</span> منطقة ، ${greenOnly ? 'نفيدكم بأنه لم تُرصد أي حالات خارجة عن الحدود التشغيلية المسموح بها .' : countPhrase}</p>
@@ -2163,14 +2178,6 @@ function openOfficialLetter(){
 
       <div class="lwish">مع أطيب التمنيات ،،،،</div>
       <div class="lsigner ed">مراقب محافظة الفروانية</div>
-
-      <div class="lcc">
-        <div><b>المرفقات : كما هو مذكور أعلاه</b></div>
-        <div><b>نســـخــــه : ${esc(recipient)}</b></div>
-        <div><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: رئيس قسم التشغيل</b></div>
-        <div class="ed"><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: م/</b></div>
-        <div><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(dateStr)}</b></div>
-      </div>
       </div>
     `;
 

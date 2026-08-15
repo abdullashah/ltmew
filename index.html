@@ -273,13 +273,44 @@
     body.report-mode .toolbar{ display:none !important; }
 
     /* ---------- Progress report view (تقرير الإنجاز، مستقل وقابل للطباعة A4) ---------- */
-    #progress-view{display:none;}
+    /* مستند بألوان ثابتة (ورق رسمي فاتح) بغض النظر عن وضع الموقع الفاتح/الداكن — مطابق لأسلوب الكتاب الرسمي */
+    #progress-view{display:none; background:#e9edf3; min-height:100vh; padding:24px 16px;}
     body.progress-mode #dashboard, body.progress-mode #empty-state,
     body.progress-mode #settings-panel, body.progress-mode #report-panel{ display:none !important; }
     body.progress-mode #progress-view{ display:block; }
     body.progress-mode .toolbar{ display:none !important; }
+    #progress-view .report-actions{ max-width:190mm; margin:0 auto 16px; }
+    #progress-view .report-doc{
+        background:#fff; color:#1a2733; border:1px solid #d3dae3; border-radius:10px;
+        max-width:190mm; margin:0 auto; padding:14mm 16mm; box-shadow:0 2px 16px rgba(20,30,45,.1);
+    }
+    #progress-view .report-doc-header{
+        display:flex; align-items:center; gap:14px;
+        border-bottom:2px solid #0f3c73; padding-bottom:14px; margin-bottom:14px;
+    }
+    #progress-view .ministry-line{ color:#0a7d4f; font-weight:700; font-size:.85em; }
+    #progress-view .dept-line{ color:#0f3c73; font-weight:700; }
+    #progress-view .report-title{ color:#0f3c73; font-size:1.3em; font-weight:800; margin:4px 0 4px; }
+    #progress-view .report-subtitle{ color:#5a6b80; font-size:.85em; }
+    #progress-view .report-meta{
+        display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px;
+        background:#f4f7fb; border:1px solid #dde5ee; border-radius:9px;
+        padding:12px 14px; margin:16px 0;
+    }
+    #progress-view .report-meta div span.lbl{ color:#6b7c93; font-size:.72em; display:block; margin-bottom:2px; }
+    #progress-view .report-meta div b{ color:#1a2733; font-size:.95em; }
+    #progress-view .chart-box{ background:#fbfcfe; border:1px solid #dde5ee; }
+    #progress-view table{ width:100%; border-collapse:collapse; font-size:.85em; }
+    #progress-view th{ background:#0f3c73; color:#fff; font-weight:600; font-size:.78em; padding:9px 10px; position:static; white-space:nowrap; }
+    #progress-view td{ padding:8px 10px; border-bottom:1px solid #e4e9f0; color:#1a2733; white-space:nowrap; }
+    #progress-view tbody tr:nth-child(even){ background:#f7f9fc; }
+    #progress-view .progress-bar-wrap{ background:#e4e9f0; }
+    #progress-view .report-sign{ margin-top:20px; }
+    #progress-view .report-sign div{ border-top:1px solid #dde5ee; color:#6b7c93; }
     @media print{
-        body.progress-mode .report-doc{ page-break-inside:avoid; }
+        body.progress-mode .report-doc{ page-break-inside:avoid; box-shadow:none !important; border-color:#ccc !important; }
+        body.progress-mode .report-doc-header{ display:flex !important; }
+        #progress-view{ background:#fff !important; padding:0; }
     }
 
     /* ---------- Official letter view (full page with back button) ---------- */
@@ -1147,7 +1178,7 @@
                 </div>
                 <div>
                     <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
-                    <div style="font-weight:700;">قسم التشغيل</div>
+                    <div class="dept-line">قسم التشغيل</div>
                 </div>
             </div>
         </div>
@@ -1157,7 +1188,7 @@
 
         <div class="report-meta" id="progress-report-meta"></div>
 
-        <div class="chart-box" style="height:230px; margin-bottom:16px;"><canvas id="progressReportChart"></canvas></div>
+        <div class="chart-box" style="height:200px; margin-bottom:16px; padding:10px;"><canvas id="progressReportChart"></canvas></div>
 
         <div class="tbl-wrap">
             <table>
@@ -2776,6 +2807,10 @@ window.addEventListener('beforeprint', ()=>{
         style.id = 'print-progress-portrait';
         style.textContent = '@page{ size: A4 portrait; margin:14mm; }';
         document.head.appendChild(style);
+        // Force Chart.js to recompute the canvas size for the (narrower) printed
+        // page — it was drawn at the on-screen container width and won't reflow
+        // on its own just because @page changed.
+        if(charts.progressReport) charts.progressReport.resize();
     }
 });
 window.addEventListener('afterprint', ()=>{

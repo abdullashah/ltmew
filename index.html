@@ -301,7 +301,7 @@
     .letter-sheet .lto .en{font-family:'Times New Roman',Times,serif; font-size:20pt; font-weight:normal;}
 
     /* الترويسة */
-    .letter-sheet .lhead{text-align:center; position:relative; padding-bottom:6px;}
+    .letter-sheet .lhead{text-align:center; position:relative; padding-bottom:6px; min-height:34mm;}
     .letter-sheet .lref-row{display:flex; justify-content:space-between; align-items:flex-start; font-family:'Sultan normal',Sultan,'Amiri',serif; font-size:11pt; color:#000;}
     .letter-sheet .lref-row .cell{line-height:2.1; min-width:190px;}
     .letter-sheet .lref-row .cell.ltr{text-align:left; direction:ltr;}
@@ -478,6 +478,12 @@
         .letter-sheet .ccell, .letter-sheet table.tcmap th{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
         .letter-sheet .lministry, .letter-sheet .lmemo{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
         .letter-sheet th{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+        /* One numbered section (أولاً/ثانياً/...) per printed A4 page. */
+        .letter-sheet .lsec{page-break-before:always;}
+        .letter-sheet .ggrid, .letter-sheet .gcard, .letter-sheet .lk, .letter-sheet .rmwrap,
+        .letter-sheet .chgrid, .letter-sheet .chcard, .letter-sheet .cmapleg{page-break-inside:avoid;}
+        .letter-sheet table.tman tr, .letter-sheet table.tcmap tr, .letter-sheet table.tremedy tr,
+        .letter-sheet table tr{page-break-inside:avoid;}
         @page{size:A4; margin:12mm;}
     }
 
@@ -2107,21 +2113,7 @@ function openOfficialLetter(){
 
     document.getElementById('letter-sheet').innerHTML = `
       <div class="lbody">
-      <div class="lhead">
-        <div class="lref-row">
-          <div class="cell">الإشارة : <span class="ed">${esc(refNo)}</span></div>
-          <div class="cell ltr">Ref : <span class="dotted"></span><br>Date : <span class="dotted"></span></div>
-        </div>
-        <div class="lemb">
-          <img src="${MEW_EMBLEM}" alt="شعار دولة الكويت">
-        </div>
-        <div class="lministry">
-          وزارة الكهرباء والماء والطاقة المتجددة<br>
-          <span class="en">Ministry of Electricity &amp; Water &amp; Renewable Energy</span><br>
-          <span class="sm"><span class="ar">دولـــة الكويــت</span> | State of Kuwait</span>
-        </div>
-        <div class="lmemo">مذكرة داخلية</div>
-      </div>
+      <div class="lhead"></div>
 
       <div class="lto">
         <span class="ed">السيد / ${esc(recipient)}</span>
@@ -2199,18 +2191,7 @@ function renderFormalLetter(d){
 
     document.getElementById('letter-sheet').innerHTML = `
       <div class="lbody">
-      <div class="lhead">
-        <div class="lref-row">
-          <div class="cell">الإشارة : <span class="ed">${esc(d.refNo)}</span><br>التاريخ : <span class="ed">${esc(d.dateStr)}</span></div>
-          <div class="cell ltr">Ref : <span class="dotted"></span><br>Date : <span class="dotted"></span></div>
-        </div>
-        <div class="lemb"><img src="${MEW_EMBLEM}" alt="شعار دولة الكويت"></div>
-        <div class="lministry">
-          وزارة الكهرباء والماء والطاقة المتجددة<br>
-          <span class="en">Ministry of Electricity &amp; Water &amp; Renewable Energy</span><br>
-          <span class="sm"><span class="ar">دولـــة الكويــت</span> | State of Kuwait</span>
-        </div>
-      </div>
+      <div class="lhead"></div>
 
       <div class="lto ed" style="margin-top:30px;">
         <span>السيد / ${esc(d.recipient)}</span>

@@ -137,6 +137,8 @@
     .panel-head h2{font-family:var(--disp); font-size:1.05em; margin:0; display:flex; align-items:center; gap:8px;}
     .panel-head .count{font-family:var(--mono); font-size:.78em; color:var(--muted); background:var(--panel-2); padding:3px 10px; border-radius:20px; border:1px solid var(--panel-border);}
     .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+    .progress-bar-wrap{background:var(--panel-2); border-radius:6px; overflow:hidden; height:10px; min-width:80px;}
+    .progress-bar-fill{height:100%; background:var(--accent); border-radius:6px;}
     .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
     @media (max-width:900px){ .grid-2,.grid-3{grid-template-columns:1fr;} }
 
@@ -694,6 +696,7 @@
         <button class="dash-tab" data-tab="cables" onclick="switchDashTab('cables')">🧵 الكيبلات</button>
         <button class="dash-tab" data-tab="risk" onclick="switchDashTab('risk')">🛡️ المخاطر</button>
         <button class="dash-tab" data-tab="reports" onclick="switchDashTab('reports')">📑 التقارير</button>
+        <button class="dash-tab" data-tab="progress" onclick="switchDashTab('progress')">🏆 تقارير الإنجاز</button>
         <div class="dash-tab-filter">
             <label for="feeder-type-filter">نوع الخط (المغذي)</label>
             <select id="feeder-type-filter" onchange="runAnalysis()">
@@ -899,6 +902,28 @@
                     <table>
                         <thead><tr><th>#</th><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول</th><th>الكيبل</th><th>التيار (A)</th><th>% من سعة الكيبل</th></tr></thead>
                         <tbody id="table-top20-cables"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-pane" data-pane="progress" style="display:none;">
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>🏆 تقارير الإنجاز — مقارنة عدد المحولات المُدخلة لكل مراقبة</h2>
+                    <span class="count" id="progress-office-count">0</span>
+                </div>
+                <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em;">
+                    يقارن هذا التقرير عدد المحولات التي تم إدخال قراءاتها لكل مراقبة، مرتبة تنازلياً حسب كمية الإنجاز.
+                    إجمالي المحولات المُدخلة عبر كل المراقبات: <b id="progress-total-tx" style="color:var(--text)">0</b>.
+                </p>
+                <div class="chart-box" style="height:320px;"><canvas id="progressChart"></canvas></div>
+                <div class="tbl-wrap" style="margin-top:16px;">
+                    <table>
+                        <thead><tr>
+                            <th>#</th><th>المراقبة</th><th>عدد المحولات المُدخلة</th><th>عدد المحطات</th><th>عدد الكيبلات (المغذيات)</th><th>% من الإجمالي</th><th>مقارنة</th>
+                        </tr></thead>
+                        <tbody id="table-progress"></tbody>
                     </table>
                 </div>
             </div>
@@ -1145,7 +1170,7 @@ const RISK_LIB = {
 let loadedOffices = {};   // { officeName: XLSX.Workbook }
 let officeDataSource = {};   // { officeName: 'live' | 'fallback' }
 let lastSelection = { office:'__all__', area:'__all__' };
-let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, reportDangerTx:null, reportTop20:null, gauges:[], cableGauges:[] };
+let charts = { pie:null, radar:null, size:null, rank:null, dangerTx:null, top20Cables:null, reportDangerTx:null, reportTop20:null, progress:null, gauges:[], cableGauges:[] };
 let globalTx = [];
 
 /* =========================================================
@@ -1171,6 +1196,9 @@ function switchDashTab(tab){
     if(tab === 'reports' && globalTx.length){
         renderDangerTxChart();
         renderTop20CablesChart();
+    }
+    if(tab === 'progress' && globalTx.length){
+        renderProgressChart();
     }
 }
 function toggleSettings(){
@@ -2448,6 +2476,7 @@ function processWorkbookData(sheetsData){
     renderShiftTable(transformers);
     renderDangerTxReport(transformers);
     renderTop20CablesReport(transformers);
+    renderProgressReport(transformers);
     renderDetailTables();
 }
 
@@ -2998,6 +3027,7 @@ function renderShiftTable(txs){
 // (see switchDashTab). These hold the latest computed rows for that purpose.
 let lastDangerTxRows = [];
 let lastTop20Cables = [];
+let lastProgressRows = [];
 
 function renderDangerTxReport(txs){
     document.getElementById('danger-tx-threshold').innerText = CFG.overloadHigh;
@@ -3065,6 +3095,69 @@ function renderTop20CablesChart(){
         options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
             scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor, font:{family:"'JetBrains Mono',monospace", size:10}}, grid:{display:false}} },
             plugins:{ legend:{display:false} } }
+    });
+}
+
+/* =========================================================
+   PROGRESS TAB — تقارير الإنجاز (عدد المحولات المُدخلة لكل مراقبة)
+========================================================= */
+/* أحمر = أقل إنجاز، أخضر = أفضل إنجاز — تدرّج خطي حسب موقع القيمة بين أدنى وأعلى عدد */
+function achieveColor(v, min, max){
+    if(max === min) return 'hsl(140,65%,45%)';
+    const t = (v - min) / (max - min);
+    return `hsl(${(t*120).toFixed(0)},72%,46%)`;
+}
+function renderProgressReport(txs){
+    const byOffice = {};
+    txs.forEach(t=>{
+        if(!byOffice[t.office]) byOffice[t.office] = { txCount:0, ssSet:new Set(), cableCount:0 };
+        byOffice[t.office].txCount++;
+        byOffice[t.office].ssSet.add(t.ssNum + '||' + t.area);
+        byOffice[t.office].cableCount += t.feeders.length;
+    });
+    const totalTx = txs.length;
+    const rows = Object.keys(byOffice).map(office=>({
+        office, txCount: byOffice[office].txCount,
+        ssCount: byOffice[office].ssSet.size,
+        cableCount: byOffice[office].cableCount
+    })).sort((a,b)=> b.txCount - a.txCount);
+    const maxTx = rows.length ? rows[0].txCount : 0;
+    const minTx = rows.length ? rows[rows.length-1].txCount : 0;
+    lastProgressRows = rows;
+
+    document.getElementById('progress-office-count').innerText = rows.length;
+    document.getElementById('progress-total-tx').innerText = totalTx;
+    document.getElementById('table-progress').innerHTML = rows.map((r,i)=>{
+        const pct = totalTx ? (r.txCount/totalTx*100) : 0;
+        const w = maxTx ? (r.txCount/maxTx*100) : 0;
+        const c = achieveColor(r.txCount, minTx, maxTx);
+        return `<tr>
+            <td class="num">${i+1}</td>
+            <td><b>${esc(r.office)}</b></td>
+            <td class="num"><b style="color:${c}">${r.txCount}</b></td>
+            <td class="num">${r.ssCount}</td>
+            <td class="num">${r.cableCount}</td>
+            <td class="num">${pct.toFixed(1)}%</td>
+            <td><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${w.toFixed(1)}%;background:${c}"></div></div></td>
+        </tr>`;
+    }).join('') || `<tr class="empty-row"><td colspan="7">لا توجد بيانات</td></tr>`;
+
+    if(isDashTabActive('progress')) renderProgressChart();
+}
+function renderProgressChart(){
+    if(charts.progress) charts.progress.destroy();
+    const rows = lastProgressRows;
+    const maxTx = rows.length ? rows[0].txCount : 0;
+    const minTx = rows.length ? rows[rows.length-1].txCount : 0;
+    const textColor = getCss('--muted');
+    const gridColor = getCss('--panel-border');
+    charts.progress = new Chart(document.getElementById('progressChart'), {
+        type:'bar',
+        data:{ labels: rows.map(r=>r.office), datasets:[{ label:'عدد المحولات المُدخلة', data: rows.map(r=>r.txCount),
+               backgroundColor: rows.map(r=> achieveColor(r.txCount, minTx, maxTx)), borderRadius:6 }] },
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}, y:{ticks:{color:textColor}, grid:{display:false}} },
+            plugins:{ legend:{display:false}, title:{display:true, text:'مقارنة عدد المحولات المُدخلة حسب المراقبة', color:textColor, font:{size:14}} } }
     });
 }
 

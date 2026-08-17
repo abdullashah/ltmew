@@ -102,7 +102,8 @@
         font-size:.85em; line-height:1.8;
     }
     body.report-mode #data-source-banner, body.letter-mode #data-source-banner,
-    body.letter-options-mode #data-source-banner, body.progress-mode #data-source-banner{display:none !important;}
+    body.letter-options-mode #data-source-banner, body.progress-mode #data-source-banner,
+    body.shift-mode #data-source-banner{display:none !important;}
 
     /* ---------- Settings drawer ---------- */
     #settings-panel, #report-panel{
@@ -279,10 +280,18 @@
     body.progress-mode #progress-view{ display:block; }
     body.progress-mode .toolbar{ display:none !important; }
 
-    /* ---------- Professional print-report look — shared by #report-view (التقرير المخصص، أفقي)
-       و #progress-view (تقرير الإنجاز، عمودي). ألوان ثابتة (ورق رسمي فاتح) بغض النظر عن وضع الموقع الفاتح/الداكن ---------- */
-    #report-view, #progress-view{ background:#e9edf3; min-height:100vh; padding:24px 16px; }
-    #report-view .report-actions, #progress-view .report-actions{ max-width:277mm; margin:0 auto 16px; }
+    /* ---------- Load-shifting report view (تقرير مناورة الأحمال، مستقل، مراقبة قابلة للاختيار) ---------- */
+    #shift-view{display:none;}
+    body.shift-mode #dashboard, body.shift-mode #empty-state,
+    body.shift-mode #settings-panel, body.shift-mode #report-panel{ display:none !important; }
+    body.shift-mode #shift-view{ display:block; }
+    body.shift-mode .toolbar{ display:none !important; }
+
+    /* ---------- Professional print-report look — shared by #report-view (التقرير المخصص، أفقي)،
+       #progress-view (تقرير الإنجاز، عمودي)، و #shift-view (تقرير المناورة، أفقي).
+       ألوان ثابتة (ورق رسمي فاتح) بغض النظر عن وضع الموقع الفاتح/الداكن ---------- */
+    #report-view, #progress-view, #shift-view{ background:#e9edf3; min-height:100vh; padding:24px 16px; }
+    #report-view .report-actions, #progress-view .report-actions, #shift-view .report-actions{ max-width:277mm; margin:0 auto 16px; }
     #progress-view .report-actions{ max-width:190mm; }
     .report-doc{
         background:#fff; color:#1a2733; border:1px solid #d3dae3; border-radius:10px;
@@ -326,8 +335,8 @@
     @media print{
         body.progress-mode .report-doc{ page-break-inside:avoid; }
         .report-doc{ box-shadow:none !important; border-color:#ccc !important; }
-        body.progress-mode .report-doc-header{ display:flex !important; }
-        #report-view, #progress-view{ background:#fff !important; padding:0; }
+        body.progress-mode .report-doc-header, body.shift-mode .report-doc-header{ display:flex !important; }
+        #report-view, #progress-view, #shift-view{ background:#fff !important; padding:0; }
     }
 
     /* ---------- Official letter view (full page with back button) ---------- */
@@ -912,7 +921,13 @@
         <div class="dash-pane" data-pane="reports" style="display:none;">
             <!-- Load shifting -->
             <div class="panel">
-                <div class="panel-head"><h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2></div>
+                <div class="panel-head">
+                    <h2 style="color:var(--accent)">💡 مقترحات مناورة الأحمال الداخلية (Load Shifting)</h2>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <select id="shift-report-office" style="min-width:170px;"></select>
+                        <button class="btn primary" onclick="openShiftReport()">🖨️ طباعة تقرير المناورة (A4)</button>
+                    </div>
+                </div>
                 <p style="margin:-4px 0 14px; color:var(--muted); font-size:.85em; line-height:1.9;">
                     <b style="color:var(--text)">طريقة العمل:</b> يفحص النظام كل محطة على حدة. إذا وُجد بها محول محمّل بنسبة
                     ≥ <span id="shift-method-high">80</span>% من سعته، يبحث عن محول آخر في نفس المحطة محمّل بأقل من
@@ -1213,6 +1228,43 @@
 
         <div class="report-sign">
             <div><span class="lbl">تاريخ الإصدار</span><br><b id="progress-report-date">—</b></div>
+        </div>
+    </div>
+</div>
+
+<div id="shift-view">
+    <div class="report-actions">
+        <button class="btn" onclick="exitShiftReport()">⬅️ رجوع للوحة الرئيسية</button>
+        <button class="btn primary" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+    </div>
+    <div class="report-doc">
+        <div class="report-doc-header">
+            <div class="brand">
+                <img class="emblem" src="kuwait-emblem.png" alt="شعار دولة الكويت" onerror="handleEmblemError(this)">
+                <div id="shift-emblem-fallback" class="emblem-fallback" style="display:none;">
+                    <span class="band g"></span><span class="band w"></span><span class="band r"></span><span class="blk"></span>
+                </div>
+                <div>
+                    <div class="ministry-line">دولة الكويت — وزارة الكهرباء والماء والطاقة المتجددة</div>
+                    <div class="dept-line">إدارة شبكات التوزيع الكهربائية / مراقبة الفروانية</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-title">🔀 تقرير مقترحات مناورة الأحمال الداخلية</div>
+        <div class="report-subtitle">نظام تحليل أحمال لوحات الضغط المنخفض</div>
+
+        <div class="report-meta" id="shift-report-meta"></div>
+
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                <tbody id="shift-report-body"></tbody>
+            </table>
+        </div>
+
+        <div class="report-sign">
+            <div><span class="lbl">تاريخ الإصدار</span><br><b id="shift-report-date">—</b></div>
         </div>
     </div>
 </div>
@@ -2571,6 +2623,7 @@ function processWorkbookData(sheetsData){
     renderCharts(transformers);
     renderRankChart(transformers);
     renderShiftTable(transformers);
+    populateShiftOfficeSelect();
     renderDangerTxReport(transformers);
     renderTop20CablesReport(transformers);
     renderProgressReport(transformers);
@@ -3127,6 +3180,42 @@ function renderShiftTable(txs){
     document.getElementById('shift-method-high').innerText = CFG.overloadHigh;
     document.getElementById('shift-method-low').innerText = CFG.shiftAvailable;
     document.getElementById('table-shifts').innerHTML = buildShiftRowsHtml(txs);
+}
+
+function populateShiftOfficeSelect(){
+    const sel = document.getElementById('shift-report-office');
+    if(!sel) return;
+    const offices = [...new Set(globalTx.map(t=>t.office))].sort();
+    const prev = sel.value;
+    sel.innerHTML = '<option value="__all__">كل المراقبات (' + offices.length + ')</option>' +
+        offices.map(o=>`<option value="${o}">مراقبة ${o}</option>`).join('');
+    sel.value = [...sel.options].some(o=>o.value===prev) ? prev : '__all__';
+}
+function openShiftReport(){
+    if(!globalTx.length) return;
+    const officeSel = document.getElementById('shift-report-office').value;
+    const officeCount = new Set(globalTx.map(t=>t.office)).size;
+    const scoped = officeSel === '__all__' ? globalTx : globalTx.filter(t=>t.office===officeSel);
+    const officeLabel = officeSel === '__all__' ? ('كل المراقبات (' + officeCount + ')') : ('مراقبة ' + officeSel);
+    const rowsHtml = buildShiftRowsHtml(scoped);
+    const opportunities = (rowsHtml.match(/<td class="num">/g) || []).length;
+    const dateStr = new Date().toLocaleDateString('ar-KW', {year:'numeric', month:'long', day:'numeric'});
+
+    document.getElementById('shift-report-meta').innerHTML = `
+        <div><span class="lbl">المراقبة</span><b>${esc(officeLabel)}</b></div>
+        <div><span class="lbl">إجمالي المحولات بالنطاق</span><b>${scoped.length}</b></div>
+        <div><span class="lbl">عدد فرص المناورة المقترحة</span><b>${opportunities}</b></div>
+        <div><span class="lbl">تاريخ الإصدار</span><b>${dateStr}</b></div>
+    `;
+    document.getElementById('shift-report-date').innerText = dateStr;
+    document.getElementById('shift-report-body').innerHTML = rowsHtml;
+
+    document.body.classList.add('shift-mode');
+    window.scrollTo({top:0, behavior:'instant'});
+}
+function exitShiftReport(){
+    document.body.classList.remove('shift-mode');
+    window.scrollTo({top:0, behavior:'instant'});
 }
 
 /* =========================================================

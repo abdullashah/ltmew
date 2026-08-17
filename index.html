@@ -937,7 +937,7 @@
                 </p>
                 <div class="tbl-wrap">
                     <table>
-                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                        <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th></tr></thead>
                         <tbody id="table-shifts"></tbody>
                     </table>
                 </div>
@@ -1151,7 +1151,7 @@
             <div class="report-section-title" style="border-inline-start-color:var(--ok)">💡 مقترحات مناورة الأحمال الداخلية</div>
             <div class="tbl-wrap">
                 <table>
-                    <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                    <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th></tr></thead>
                     <tbody id="report-shift-body"></tbody>
                 </table>
             </div>
@@ -1259,7 +1259,7 @@
 
         <div class="tbl-wrap">
             <table>
-                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th><th>الأثر المتوقع</th></tr></thead>
+                <thead><tr><th>المحطة</th><th>المراقبة</th><th>المنطقة</th><th>المحول المجهد</th><th>المحول المتاح</th><th>الإجراء الفني المقترح</th></tr></thead>
                 <tbody id="shift-report-body"></tbody>
             </table>
         </div>
@@ -3164,18 +3164,16 @@ function buildShiftRowsHtml(txs){
             avTxs.forEach(av=>{
                 const maxF = ov.feeders.reduce((a,b)=>a.maxLoad>b.maxLoad?a:b);
                 const minF = av.feeders.reduce((a,b)=>a.maxLoad<b.maxLoad?a:b);
-                const projected = Math.max(ov.loadPct - (maxF.maxLoad/ov.ratedI*100), 0);
                 html += `<tr>
                     <td class="num">${ss}</td><td>${office}</td><td>${area}</td>
                     <td><span class="sev crit">${ov.tName} — ${ov.loadPct.toFixed(1)}%</span></td>
                     <td><span class="sev ok">${av.tName} — ${av.loadPct.toFixed(1)}%</span></td>
                     <td class="wrap">فصل الكيبل الأعلى تحميلاً <b>${maxF.feeder}</b> (${Math.round(maxF.maxLoad)}A، ${maxF.loadPct.toFixed(0)}% من سعته) من ${ov.tName}، وربطه بدلاً من الكيبل الأقل تحميلاً <b>${minF.feeder}</b> (${Math.round(minF.maxLoad)}A، ${minF.loadPct.toFixed(0)}%) في ${av.tName}</td>
-                    <td>خفض تقديري لـ${ov.tName} إلى ~${projected.toFixed(0)}%</td>
                 </tr>`;
             });
         });
     });
-    return html || `<tr class="empty-row"><td colspan="7">لا توجد فرص مناورة داخلية متاحة ضمن نفس المحطة حالياً (لا يوجد محول محمّل ≥ ${CFG.overloadHigh}% مع محول آخر أقل من ${CFG.shiftAvailable}% في نفس المحطة)</td></tr>`;
+    return html || `<tr class="empty-row"><td colspan="6">لا توجد فرص مناورة داخلية متاحة ضمن نفس المحطة حالياً (لا يوجد محول محمّل ≥ ${CFG.overloadHigh}% مع محول آخر أقل من ${CFG.shiftAvailable}% في نفس المحطة)</td></tr>`;
 }
 function renderShiftTable(txs){
     document.getElementById('shift-method-high').innerText = CFG.overloadHigh;
